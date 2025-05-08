@@ -1,0 +1,39 @@
+#!/bin/bash
+set -e
+
+# 获取当前脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# 日志文件路径
+LOG_DIR="/tmp/savt-client"
+LOG_FILE="$LOG_DIR/postinstall.log"
+
+# 确保日志目录存在
+mkdir -p "$LOG_DIR"
+
+# 设置日志输出
+exec > >(tee -i "$LOG_FILE") 2>&1
+
+echo "Starting postinstall script..."
+
+# 调用 install_main.sh 安装主程序
+echo "Running install_main.sh..."
+"$SCRIPT_DIR/install_main.sh"
+
+# 调用 install_savt_client_worker.sh 安装服务
+echo "Running install_savt_client_worker.sh..."
+"$SCRIPT_DIR/install_savt_client_worker.sh"
+
+# 查找当前挂载的安装盘
+MOUNT_POINT=$(df | grep "savt-client" | awk '{print $NF}')
+if [ -n "$MOUNT_POINT" ]; then
+    echo "Unmounting DMG at $MOUNT_POINT..."
+    hdiutil detach "$MOUNT_POINT" || {
+        echo "Failed to unmount $MOUNT_POINT. Please eject the disk image manually."
+    }
+else
+    echo "DMG mount point not found. Skipping unmount."
+fi
+
+# 完成日志
+echo "Postinstall script completed successfully!"
