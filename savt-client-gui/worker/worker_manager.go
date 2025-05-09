@@ -22,6 +22,23 @@ import (
 	"sync"
 )
 
+const (
+	// OS constants
+	OSLinux   = "linux"
+	OSDarwin  = "darwin"
+	OSWindows = "windows"
+
+	// Service name constants
+	ServiceNameLinux   = "savt-client.savt-client-worker.service"
+	ServiceNameDefault = "savt-client.savt-client-worker"
+
+	// Command constants
+	CmdStartLinux   = "start"
+	CmdStopLinux    = "stop"
+	CmdStartWindows = "Start-Service"
+	CmdStopWindows  = "Stop-Service"
+)
+
 type WorkerManager struct {
 	serviceName string
 	proxy       GRPCProxy
@@ -31,14 +48,12 @@ type WorkerManager struct {
 func NewWorkerManager(proxy GRPCProxy) *WorkerManager {
 	var serviceName string
 	switch runtime.GOOS {
-	case "linux":
-		serviceName = "savt-client.savt-client-worker.service"
-	case "darwin":
-		serviceName = "savt-client.savt-client-worker"
-	case "windows":
-		serviceName = "savt-client.savt-client-worker"
+	case OSLinux:
+		serviceName = ServiceNameLinux
+	case OSDarwin, OSWindows:
+		serviceName = ServiceNameDefault
 	default:
-		serviceName = "savt-client.savt-client-worker"
+		serviceName = ServiceNameDefault
 	}
 	return &WorkerManager{
 		serviceName: serviceName,
@@ -55,6 +70,36 @@ func (wm *WorkerManager) IsRunning() bool {
 	return resp.GetMessage() == "ping"
 }
 
+func (wm *WorkerManager) executeServiceCommand(action string) error {
+	switch runtime.GOOS {
+	case OSLinux:
+		cmd := exec.Command("sudo", "systemctl", action, wm.serviceName) // #nosec G204
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to %s service: %v", action, err)
+		}
+	case OSDarwin:
+		appleScript := fmt.Sprintf(`
+            do shell script "launchctl %s %s" with administrator privileges
+        `, action, wm.serviceName)
+		cmd := exec.Command("osascript", "-e", appleScript) // #nosec G204
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to %s service: %v", action, err)
+		}
+	case OSWindows:
+		cmdAction := CmdStartWindows
+		if action == CmdStopLinux {
+			cmdAction = CmdStopWindows
+		}
+		cmd := exec.Command("powershell", "-Command", cmdAction, wm.serviceName) // #nosec G204
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to %s service: %v", action, err)
+		}
+	default:
+		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
+	return nil
+}
+
 func (wm *WorkerManager) Start() error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
@@ -63,31 +108,7 @@ func (wm *WorkerManager) Start() error {
 		return fmt.Errorf("worker service is already running")
 	}
 
-	switch runtime.GOOS {
-	case "linux":
-		cmd := exec.Command("sudo", "systemctl", "start", wm.serviceName)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to start service: %v", err)
-		}
-	case "darwin":
-		appleScript := fmt.Sprintf(`
-            do shell script "launchctl start %s" with administrator privileges
-        `, wm.serviceName)
-		cmd := exec.Command("osascript", "-e", appleScript)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to start service: %v", err)
-		}
-
-	case "windows":
-		cmd := exec.Command("powershell", "-Command", "Start-Service", wm.serviceName)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to start service: %v", err)
-		}
-	default:
-		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
-	}
-
-	return nil
+	return wm.executeServiceCommand(CmdStartLinux)
 }
 
 func (wm *WorkerManager) Stop() error {
@@ -98,29 +119,5 @@ func (wm *WorkerManager) Stop() error {
 		return fmt.Errorf("worker service is not running")
 	}
 
-	switch runtime.GOOS {
-	case "linux":
-		cmd := exec.Command("sudo", "systemctl", "stop", wm.serviceName)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to stop service: %v", err)
-		}
-	case "darwin":
-		appleScript := fmt.Sprintf(`
-            do shell script "launchctl stop %s" with administrator privileges
-        `, wm.serviceName)
-
-		cmd := exec.Command("osascript", "-e", appleScript)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to stop service: %v", err)
-		}
-	case "windows":
-		cmd := exec.Command("powershell", "-Command", "Stop-Service", wm.serviceName)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to stop service: %v", err)
-		}
-	default:
-		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
-	}
-
-	return nil
+	return wm.executeServiceCommand(CmdStopLinux)
 }

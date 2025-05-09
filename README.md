@@ -1,118 +1,53 @@
-# SAVT Client
+<h1 align="center">
+  <a href="https://github.com/dec0dOS/amazing-github-template">
+    <img src="icon.ico" alt="Logo" width="250" height="250">
+  </a>
+</h1>
+
+<div align="center">
+  SAV-T client is an active measurement tool which attempts to send and receive a series of spoofed UDP packets to/from servers distributed throughout the world. 
+  <br />
+  <br />
+
+  <a href="https://github.com/KI3-Team/savt-client/issues/new?assignees=&labels=bug&template=01_BUG_REPORT.md&title=bug%3A+">Report a Bug</a>
+  ·
+  <a href="https://github.com/KI3-Team/savt-client/issues/new?assignees=&labels=enhancement&template=02_FEATURE_REQUEST.md&title=feat%3A+">Request a Feature</a>
+  .
+  <a href="https://ki3.org.cn/#/contact">Contact Us</a>
+</div>
+
+<div align="center">
+<br />
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+<a href="https://github.com/KI3-Team/savt-client/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/KI3-Team/savt-client?style=social?style=social"></a>
 
-SAVT Client is a high-performance network diagnostic tool for analyzing and optimizing network performance.
+<a href="https://github.com/KI3-Team/savt-client/releases"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/KI3-Team/savt-client"></a>
 
-## Features
+</div>
 
-- Network Latency Testing
-- Bandwidth Measurement
-- Route Tracing
-- Packet Analysis
-- Real-time Monitoring
-- Multi-platform Support
+
+## About
+
+Thank you for your interest in participating in our SAV-T measurement Task (hereinafter referred to as the “Task”). This Informed Consent Agreement (hereinafter referred to as the “Agreement”) is designed to inform you about the nature of the Task, its purpose, the procedures involved, potential risks and benefits, and your rights as a participant. Please read this Agreement carefully before deciding whether to participate in the Task.
+
+**Purpose of the Task**: The purpose of the Task is to collect IP spoofing status of the Internet. Your participation in the Task will contribute to understand and minimize the Internet’s vulnerability to spoofed-source attacks, thus better protecting the Internet.
+
+**Procedures Involved**: Participation in the Task will involve downloading and installing SAV-T software on your computer, running the software and submit your token proof.
+
+**Compensation**: You will be compensated online through Prolific for your participation in the Task. Incomplete or non-compliant code submissions will not be eligible for payment.
+
+**Confidentiality and Data Protection**: Your participation in the Task is confidential. Your IP address will not be published in any form. Your personal information will not be collected or shared with any third parties. The data collected will be stored securely and will be used only for the purposes of the Research.
+
+
 
 ## Quick Start
-
-### Installation
-
-```bash
-# Install using package manager
-brew install savt-client  # macOS
-apt install savt-client   # Ubuntu/Debian
-
-# Or build from source
-git clone https://github.com/your-username/savt-client.git
-cd savt-client
-make build
-```
-
-### Usage
-
-```bash
-# Basic usage
-savt-client ping example.com
-
-# Bandwidth test
-savt-client speedtest
-
-# Route tracing
-savt-client trace example.com
-```
-
-## Documentation
-
-- [User Guide](docs/user-guide/README.md)
-- [API Documentation](docs/api/README.md)
-
-## Feedback
-
-If you encounter any issues or have feature suggestions while using the software, please provide feedback through [GitHub Issues](https://github.com/your-username/savt-client/issues).
-
-## Security
-
-If you discover a security vulnerability, please refer to our [Security Policy](SECURITY.md).
-
-## License
-
-This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+- [User Guide](https://ki3.org.cn/#/sav?sub=savTest&children=clientDownload)
+- [Developer Guide](savt-client-doc/develop/README.md)
 
 ## Contact
-
-- Feedback: [GitHub Issues](https://github.com/your-username/savt-client/issues)
-- Email: [Project Email]
-- Website: [Project Website]
+- Website: [https://ki3.org.cn/#/contact](https://ki3.org.cn/#/contact)
+- Email: [ki3contact@163.com](mailto:ki3contact@163.com)
 
 
-![icon.ico](./icon.ico)
-
-
-# SAVT Client Project
-
-## Build Process
-
-### 0. Clean Build Environment
-```bash
-rm -rf build/
-```
-
-### 1. Compilation Phase
-```bash
-# Compile savt-client-api
-cd savt-client-api
-go build -o ../build/savt-client-api
-
-# Compile savt-client-cli
-cd ../savt-client-cli
-go build -o ../build/savt-client-cli
-```
-
-### 2. Packaging Phase
-```bash
-cd ..
-./package.sh
-```
-
-Goal: Unified packaging logic, ultimately combining the build artifacts (binary files) of these two modules into a single software package.
-
-Packaging format can be chosen based on the target platform:
-- MacOS: Use pkgbuild tool to package into dmg installer
-- Windows: Use InnoSetup tool to package into a single exe installer
-
-### 3. Integration and Deployment
-```bash
-make deploy
-```
-
-### Package Operation Example
-```bash
-git checkout release/2.0.0
-# a. Execute command on 2 mac arm64 and amd64 computers, manually ensure not to modify source code!!
-make flow
-# b. Execute command on 1 arm64 windows arm64 computer
-make flow
-# c. Execute command on 2 arm64/amd64 linux computers
-make flow
-```
 

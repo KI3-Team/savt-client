@@ -1,1 +1,0 @@
-Please read the [KI3](https://ki3.org.cn/#/sav) Community Code of Conduct.

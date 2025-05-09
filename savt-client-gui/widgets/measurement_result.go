@@ -63,7 +63,7 @@ func NewMeasurementResultWidget(ipVersion IPVersion) *MeasurementResultWidget {
 	w := &MeasurementResultWidget{
 		ipVersion:                  ipVersion,
 		clientAddressLabel:         newBoldLabel("Client address: "),
-		clientAddressValue:         newWrappedLabel(formatAddress(ipVersion, result.ClientAddress)),
+		clientAddressValue:         newWrappedLabel(formatAddress(result.ClientAddress)),
 		asnLabel:                   newBoldLabel("ASN: "),
 		asnValue:                   widget.NewLabel(formatASN(result.Asn)),
 		outboundPrivateLabel:       newBoldLabel("Outbound private:"),
@@ -133,7 +133,7 @@ func NewMeasurementResultWidget(ipVersion IPVersion) *MeasurementResultWidget {
 }
 
 func (w *MeasurementResultWidget) applyResult(result *savt.MeasurementResult) {
-	w.clientAddressValue.SetText(formatAddress(w.ipVersion, result.ClientAddress))
+	w.clientAddressValue.SetText(formatAddress(result.ClientAddress))
 	w.asnValue.SetText(formatASN(result.Asn))
 	w.outboundPrivateIcon.Resource = getImageStatus(w.ipVersion, result.OutboundPrivate).Resource
 	w.outboundRoutableIcon.Resource = getImageStatus(w.ipVersion, result.OutboundRoutable).Resource
@@ -201,12 +201,14 @@ func newBoldLabel(text string) *widget.Label {
 	return label
 }
 
-func formatAddress(ipVersion IPVersion, address string) string {
+// formatAddress formats the address string
+func formatAddress(address string) string {
 	if address == "" {
 		return "-"
 	}
 	return address
 }
+
 func formatASN(asn int32) string {
 	if asn == 0 {
 		return "-"
