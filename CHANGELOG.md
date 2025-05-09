@@ -1,39 +1,27 @@
-# 变更日志
+# Changelog
 
-本文档记录项目的所有重要更改。
+All notable changes to this project will be documented in this file.
 
-格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
-并且本项目遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)。
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [未发布]
+## [Unreleased]
 
-### 新增
-- 初始项目结构
-- 基础功能实现
-- 文档和贡献指南
+### Added
+- 支持 Windows ARM64 构建目标
+- 新增 `make deploy_doc` 命令用于发布文档
 
-### 变更
-- 无
+### Fixed
+- 修复打包流程在 macOS 上不兼容的问题
 
-### 修复
-- 无
+## [v1.2.0] - 2025-05-01
 
-### 安全
-- 添加安全策略
-- 实施基本的安全措施
+### Added
+- 新增 `make release_doc` 用于文档版本化部署
 
-## [1.0.0] - YYYY-MM-DD
+### Changed
+- 更新 `deploy` 逻辑，支持动态 ENV 选择
 
-### 新增
-- 初始版本发布
-- 核心功能实现
-- 基础文档
+## [v1.1.0] - 2025-03-15
 
-### 变更
-- 无
-
-### 修复
-- 无
-
-### 安全
-- 初始安全配置 
+- 初始版本发布，包含 CLI、GUI、Worker 三组件支持
