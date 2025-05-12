@@ -43,8 +43,8 @@ Thank you for your interest in participating in our SAV-T measurement Task (here
 - **Tracefilter Module**:  
   This module pinpoints where SAV filtering occurs along the path of spoofed packets. It works by comparing normal and spoofed `traceroute` results. If intermediate routers fail to return ICMP replies when the spoofed source is used, the filtering position can be inferred. This helps identify which AS or router deploys SAV on the outbound path.
 
-- **Periodic Measurement Module**:  
-  This background service enables long-term monitoring by scheduling regular measurements (e.g., weekly) or triggering tests upon client's network changes. It includes failure handling and retry logic, making SAV-T suitable for autonomous deployment on remote vantage points.
+- **Automatic Measurement Module**:  
+  This background service enables long-term monitoring by automatically scheduling and executing SAV tests. It supports periodic execution (e.g., weekly), failure retries, and triggers new measurements when the client’s public IP address changes. This ensures continuous, autonomous operation without manual intervention.
 
 - **GUI Module**:  
   A graphical interface (available for Windows and macOS) allows users to easily manage measurements, configure parameters, view logs in real time, and review historical results. It interacts with the core worker component via gRPC, offering a user-friendly entry point without requiring command-line interaction.
