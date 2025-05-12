@@ -1,0 +1,60 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - errcheck      # Check for unchecked errors
+    - govet        # Go's built-in code analysis tool
+    - ineffassign  # Detect ineffective assignments
+    - staticcheck  # Static code analysis tool
+    - unused       # Check for unused code
+    - gosec       # Security checker
+    - revive      # Go code linter
+    - dupl        # Code duplication checker
+    - goconst     # Find strings that could be replaced with constants
+    - unconvert   # Remove unnecessary type conversions
+    - unparam     # Find unused function parameters
+    - whitespace  # Check whitespace usage
+    - asciicheck  # Check for non-ASCII identifiers
+  disable:
+    - lll         # Disable line length limit check
+    - wsl         # Disable whitespace line rules
+    - godox       # Disable TODO/FIXME checks
+    - funlen      # Disable function length check
+    - gochecknoglobals  # Disable global variables check
+    - gochecknoinits    # Disable init functions check
+    - testpackage # Disable test package name check
+    - nlreturn    # Disable newline before return check
+    - gocyclo     # Disable cyclomatic complexity check
+  settings:
+    gocyclo:
+      min-complexity: 15
+    dupl:
+      threshold: 100
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  new-from-rev: ""
+run:
+  concurrency: 4
+  timeout: 5m
+  skip-dirs:
+    - vendor
+    - third_party
+    - testdata
+    - savt-client-doc
+    - savt-client-gui
+  allow-parallel-runners: true
+  build-tags:
+    - integration
+    - e2e
+  modules-download-mode: readonly
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  sort-results: true

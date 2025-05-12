@@ -1,19 +1,15 @@
-## 描述
-请包含对更改的简要描述以及相关动机。列出此 PR 解决的任何依赖项。
+## Description
+Please include a brief description of the changes and the related motivation. List any dependencies that this PR addresses.
+Fixes #(issue)
 
-修复 #(issue)
+## Type
+Please delete the irrelevant options:
 
-## 类型
-请删除不相关的选项：
+- [ ] Bug fix (fixes an issue)
+- [ ] New feature (adds new functionality)
+- [ ] Breaking change (fix or feature that may cause existing functionality to not work as expected)
+- [ ] This change requires documentation updates
 
-- [ ] Bug 修复（修复了一个问题）
-- [ ] 新功能（添加了新功能）
-- [ ] 破坏性更改（修复或功能可能导致现有功能无法按预期工作）
-- [ ] 此更改需要更新文档
+## How to verify (including necessary screenshots)
+Please describe the steps required to test this PR.
 
-## 如何测试
-请描述测试此 PR 所需的步骤。
-
-## 截图（如果适用）：
-
-## 其他注意事项： 

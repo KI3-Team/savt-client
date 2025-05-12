@@ -72,8 +72,15 @@ clean:
 	@rm -rf $(OUTPUT_DIR)
 	@echo "Clean completed."
 
+.PHONY: lint
+lint:
+	@echo "Running lint checks..."
+	@chmod +x lint.sh
+	@./lint.sh
+	@echo "Lint checks completed."
+
 .PHONY: build
-build: build-$(OS)
+build: lint build-$(OS)
 build-mac:
 	@echo "Building for macOS $(ARCH)..."
 	mkdir -p $(OUTPUT_DIR)/$(OS)/$(ARCH)/

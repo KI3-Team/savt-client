@@ -29,10 +29,31 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+const (
+	// Validation constants
+	MinNetworkCheckInterval = 60
+	MinRetryLimit           = 2
+	MaxInt32                = 1<<31 - 1
+)
+
+// safeParseInt32 safely parses a string to int32 with validation
+func safeParseInt32(s string, min, max int32) (int32, error) {
+	val, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid number format")
+	}
+
+	if val < int64(min) || val > int64(max) {
+		return 0, fmt.Errorf("value out of range [%d, %d]", min, max)
+	}
+
+	return int32(val), nil
+}
+
 // showValidationErrorDialog displays a validation error dialog
-func showValidationErrorDialog(title, message string, win fyne.Window) {
+func showValidationErrorDialog(message string, win fyne.Window) {
 	dialog.ShowCustom(
-		title,
+		"Validation Error",
 		"Close",
 		container.NewVBox(
 			widget.NewLabel(message),
@@ -41,8 +62,21 @@ func showValidationErrorDialog(title, message string, win fyne.Window) {
 	)
 }
 
+// validateAndSetInterval validates and sets an interval value
+func validateAndSetInterval(entry *widget.Entry, min int32, fieldName string, win fyne.Window) (int32, bool) {
+	val, err := safeParseInt32(entry.Text, min, MaxInt32)
+	if err != nil {
+		showValidationErrorDialog(
+			fmt.Sprintf("Invalid value for '%s'. It must be a number between %d and %d.", fieldName, min, MaxInt32),
+			win,
+		)
+		return 0, false
+	}
+	return val, true
+}
+
 // createSettingPage creates the settings page
-func createSettingPage(wm *worker.WorkerManager, win fyne.Window) (*fyne.Container, func()) {
+func createSettingPage(_ *worker.WorkerManager, win fyne.Window) (*fyne.Container, func()) {
 	loadingLabel := widget.NewLabel("Loading...")
 	contentContainer := container.NewVBox(loadingLabel)
 
@@ -83,60 +117,40 @@ func createSettingPage(wm *worker.WorkerManager, win fyne.Window) (*fyne.Contain
 			enableSchedulerrCheck.SetChecked(config.EnableScheduler)
 
 			saveButton := widget.NewButtonWithIcon("Save", theme.ConfirmIcon(), func() {
-				if val, err := strconv.Atoi(measurementIntervalEntry.Text); err != nil || val <= 0 {
-					showValidationErrorDialog(
-						"Validation Error",
-						"Invalid value for 'Complete Interval'. It must be a positive number greater than 0.",
-						win,
-					)
+				// Validate Complete Interval
+				val, ok := validateAndSetInterval(measurementIntervalEntry, 1, "Complete Interval", win)
+				if !ok {
 					return
-				} else {
-					config.CompleteInterval = int32(val)
 				}
+				config.CompleteInterval = val
 
-				if val, err := strconv.Atoi(retryIntervalEntry.Text); err != nil || val <= 0 {
-					showValidationErrorDialog(
-						"Validation Error",
-						"Invalid value for 'Incomplete Retry Interval'. It must be a positive number greater than 0.",
-						win,
-					)
+				// Validate Incomplete Retry Interval
+				val, ok = validateAndSetInterval(retryIntervalEntry, 1, "Incomplete Retry Interval", win)
+				if !ok {
 					return
-				} else {
-					config.IncompleteRetryInterval = int32(val)
 				}
+				config.IncompleteRetryInterval = val
 
-				if val, err := strconv.Atoi(networkCheckIntervalEntry.Text); err != nil || val <= 60 {
-					showValidationErrorDialog(
-						"Validation Error",
-						"Invalid value for 'Network Check Interval'. It must be greater than 60.",
-						win,
-					)
+				// Validate Network Check Interval
+				val, ok = validateAndSetInterval(networkCheckIntervalEntry, MinNetworkCheckInterval, "Network Check Interval", win)
+				if !ok {
 					return
-				} else {
-					config.CheckNetworkInterval = int32(val)
 				}
+				config.CheckNetworkInterval = val
 
-				if val, err := strconv.Atoi(waitAfterNetworkChangeEntry.Text); err != nil || val <= 0 {
-					showValidationErrorDialog(
-						"Validation Error",
-						"Invalid value for 'Wait After Change Interval'. It must be a positive number greater than 0.",
-						win,
-					)
+				// Validate Wait After Change Interval
+				val, ok = validateAndSetInterval(waitAfterNetworkChangeEntry, 1, "Wait After Change Interval", win)
+				if !ok {
 					return
-				} else {
-					config.WaitAfterChangeInterval = int32(val)
 				}
+				config.WaitAfterChangeInterval = val
 
-				if val, err := strconv.Atoi(maxRetryLimitEntry.Text); err != nil || val <= 1 {
-					showValidationErrorDialog(
-						"Validation Error",
-						"Invalid value for 'Retry Limit'. It must be greater than 1.",
-						win,
-					)
+				// Validate Retry Limit
+				val, ok = validateAndSetInterval(maxRetryLimitEntry, MinRetryLimit, "Retry Limit", win)
+				if !ok {
 					return
-				} else {
-					config.RetryLimit = int32(val)
 				}
+				config.RetryLimit = val
 
 				_, saveErr := globals.GUIAPP.Proxy.SetConfig(config)
 				if saveErr != nil {
