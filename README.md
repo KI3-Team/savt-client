@@ -33,11 +33,30 @@ Thank you for your interest in participating in our SAV-T measurement Task (here
 
 **Purpose of the Task**: The purpose of the Task is to collect IP spoofing status of the Internet. Your participation in the Task will contribute to understand and minimize the Internet’s vulnerability to spoofed-source attacks, thus better protecting the Internet.
 
+<!-- **Confidentiality and Data Protection**: Your participation in the Task is confidential. Your IP address will not be published in any form. Your personal information will not be collected or shared with any third parties. The data collected will be stored securely and will be used only for the purposes of the Research. -->
+
+**Features of SAV-T Software**: The SAV-T measurement platform includes multiple well-designed functional modules to ensure accurate and comprehensive evaluation of source address validation (SAV) deployments across the Internet.
+
+- **Basic Measurement Module**:  
+  This module conducts outbound and inbound SAV tests by crafting and sending a series of spoofed UDP packets between the client and server. It helps determine whether a network can block forged source IP addresses from being sent or received. The module includes fine-grained spoofing capability testing (e.g., common-prefix variation and private address tests) and leverages token-based verification to ensure result integrity and eliminate interference from unrelated traffic.
+
+- **Tracefilter Module**:  
+  This module pinpoints where SAV filtering occurs along the path of spoofed packets. It works by comparing normal and spoofed `traceroute` results. If intermediate routers fail to return ICMP replies when the spoofed source is used, the filtering position can be inferred. This helps identify which AS or router deploys SAV on the outbound path.
+
+- **Periodic Measurement Module**:  
+  This background service enables long-term monitoring by scheduling regular measurements (e.g., weekly) or triggering tests upon client's network changes. It includes failure handling and retry logic, making SAV-T suitable for autonomous deployment on remote vantage points.
+
+- **GUI Module**:  
+  A graphical interface (available for Windows and macOS) allows users to easily manage measurements, configure parameters, view logs in real time, and review historical results. It interacts with the core worker component via gRPC, offering a user-friendly entry point without requiring command-line interaction.
+
+- **Cross-platform Support**:  
+  SAV-T is available on Windows, macOS, and Linux, and supports both amd64 and arm64 architectures. It can run as a system service with auto-start on boot, ensuring stable and uninterrupted operation for long-term measurement.
+
+**By participating and running SAV-T**, you help build a global dataset of source address validation capabilities, contributing to Internet security research and infrastructure protection. The collected results are anonymously visualized at [KI3 SAV-T Results Dashboard](https://ki3.org.cn/#/sav?sub=savTest&children=recentTestResults).
+
 **Procedures Involved**: Participation in the Task will involve downloading and installing SAV-T software on your computer, running the software and submit your token proof.
 
-**Compensation**: You will be compensated online through Prolific for your participation in the Task. Incomplete or non-compliant code submissions will not be eligible for payment.
-
-**Confidentiality and Data Protection**: Your participation in the Task is confidential. Your IP address will not be published in any form. Your personal information will not be collected or shared with any third parties. The data collected will be stored securely and will be used only for the purposes of the Research.
+**Compensation**: You will be compensated online through Prolific for your participation in the Task. Incomplete or non-compliant submissions will not be eligible for payment.
 
 
 
