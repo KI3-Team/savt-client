@@ -104,18 +104,27 @@ func (h IPv6) MarshalBinary() ([]byte, error) {
 		h.Dst = net.IPv6zero
 	}
 
-	if err := binary.Write(&b, binary.BigEndian, uint32(h.Version<<28|h.TrafficClass<<20|h.FlowLabel)); err != nil {
+	// Use temporary variables to ensure values are in valid range
+	versionAndFields := uint32((h.Version << 28) | (h.TrafficClass << 20) | h.FlowLabel)
+	if err := binary.Write(&b, binary.BigEndian, versionAndFields); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(&b, binary.BigEndian, uint16(h.PayloadLen)); err != nil {
+
+	payloadLen := uint16(h.PayloadLen)
+	if err := binary.Write(&b, binary.BigEndian, payloadLen); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(&b, binary.BigEndian, uint8(h.NextHeader)); err != nil {
+
+	nextHeader := uint8(h.NextHeader)
+	if err := binary.Write(&b, binary.BigEndian, nextHeader); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(&b, binary.BigEndian, uint8(h.HopLimit)); err != nil {
+
+	hopLimit := uint8(h.HopLimit)
+	if err := binary.Write(&b, binary.BigEndian, hopLimit); err != nil {
 		return nil, err
 	}
+
 	if err := binary.Write(&b, binary.BigEndian, []byte(h.Src.To16())); err != nil {
 		return nil, err
 	}
@@ -166,6 +175,13 @@ func (h *IPv6) UnmarshalBinary(b []byte) error {
 	}
 	payload := b[IPv6HeaderLen : IPv6HeaderLen+h.PayloadLen]
 	if h.NextHeader == ProtoUDP {
+		// Process UDP protocol
+		udp, err := NewUDP(payload)
+		if err == nil {
+			h.next = udp
+		} else {
+			h.next = &Raw{Data: payload}
+		}
 	} else {
 		h.next = &Raw{Data: payload}
 	}

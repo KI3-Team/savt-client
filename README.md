@@ -29,11 +29,15 @@
 
 ## About
 
-Thank you for your interest in participating in our SAV-T measurement Task (hereinafter referred to as the “Task”). This Informed Consent Agreement (hereinafter referred to as the “Agreement”) is designed to inform you about the nature of the Task, its purpose, the procedures involved, potential risks and benefits, and your rights as a participant. Please read this Agreement carefully before deciding whether to participate in the Task.
+SAV-T client is an active measurement tool which attempts to send and receive a series of spoofed UDP packets to/from servers distributed throughout the world. We use SAV-T clients to test a network’s ability of outbound or inbound spoofing periodically.
+
+**By participating and running SAV-T**, you help build a global dataset of source address validation capabilities, contributing to Internet security research and infrastructure protection. The collected results are anonymously visualized at [KI3 SAV-T Results Dashboard](https://ki3.org.cn/#/sav?sub=savTest&children=recentTestResults).
+
+<!-- Thank you for your interest in participating in our SAV-T measurement Task (hereinafter referred to as the “Task”). This Informed Consent Agreement (hereinafter referred to as the “Agreement”) is designed to inform you about the nature of the Task, its purpose, the procedures involved, potential risks and benefits, and your rights as a participant. Please read this Agreement carefully before deciding whether to participate in the Task.
 
 **Purpose of the Task**: The purpose of the Task is to collect IP spoofing status of the Internet. Your participation in the Task will contribute to understand and minimize the Internet’s vulnerability to spoofed-source attacks, thus better protecting the Internet.
 
-<!-- **Confidentiality and Data Protection**: Your participation in the Task is confidential. Your IP address will not be published in any form. Your personal information will not be collected or shared with any third parties. The data collected will be stored securely and will be used only for the purposes of the Research. -->
+**Confidentiality and Data Protection**: Your participation in the Task is confidential. Your IP address will not be published in any form. Your personal information will not be collected or shared with any third parties. The data collected will be stored securely and will be used only for the purposes of the Research. 
 
 **Features of SAV-T Software**: The SAV-T measurement platform includes multiple well-designed functional modules to ensure accurate and comprehensive evaluation of source address validation (SAV) deployments across the Internet.
 
@@ -50,13 +54,11 @@ Thank you for your interest in participating in our SAV-T measurement Task (here
   A graphical interface (available for Windows and macOS) allows users to easily manage measurements, configure parameters, view logs in real time, and review historical results. It interacts with the core worker component via gRPC, offering a user-friendly entry point without requiring command-line interaction.
 
 - **Cross-platform Support**:  
-  SAV-T is available on Windows, macOS, and Linux, and supports both amd64 and arm64 architectures. It can run as a system service with auto-start on boot, ensuring stable and uninterrupted operation for long-term measurement.
-
-**By participating and running SAV-T**, you help build a global dataset of source address validation capabilities, contributing to Internet security research and infrastructure protection. The collected results are anonymously visualized at [KI3 SAV-T Results Dashboard](https://ki3.org.cn/#/sav?sub=savTest&children=recentTestResults).
+  SAV-T is available on Windows, macOS, and Linux, and supports both amd64 and arm64 architectures. It can run as a system service with auto-start on boot, ensuring stable and uninterrupted operation for long-term measurement. 
 
 **Procedures Involved**: Participation in the Task will involve downloading and installing SAV-T software on your computer, running the software and submit your token proof.
 
-**Compensation**: You will be compensated online through Prolific for your participation in the Task. Incomplete or non-compliant submissions will not be eligible for payment.
+**Compensation**: You will be compensated online through Prolific for your participation in the Task. Incomplete or non-compliant submissions will not be eligible for payment.  -->
 
 
 

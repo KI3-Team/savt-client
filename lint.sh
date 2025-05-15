@@ -3,10 +3,10 @@
 set -e
 
 MODULES=(
-    "savt-client-api"
+    #"savt-client-api"
     "savt-client-cli"
     "savt-client-worker"
-    "savt-client-gui"
+    #"savt-client-gui"
 )
 
 CURRENT_DIR=$(pwd)
