@@ -1,8 +1,8 @@
-# 环境检查
+# Environment check
 ifeq ($(shell which jq),)
     $(error "jq is not installed, please install jq or set version manually.")
 endif
-# 配置
+# Configuration
 SERVICE_CONFIG_FILE := service.json
 VERSION := $(shell jq -r '.version' $(SERVICE_CONFIG_FILE) 2>/dev/null)
 ENV := $(shell jq -r '.env' $(SERVICE_CONFIG_FILE) 2>/dev/null)
@@ -23,20 +23,19 @@ ARCH_RAW := $(strip $(shell uname -m))
 ARCH := $(strip $(if $(filter x86_64,$(ARCH_RAW)),amd64,$(ARCH_RAW)))
 ARCH := $(strip $(if $(filter arm64 aarch64,$(ARCH)),arm64,$(ARCH)))
 
-# 支持的操作系统和架构列表
+# Supported operating systems and architectures list
 SUPPORTED_ARCHS := arm64 amd64 arm 386
 SUPPORTED_OS := windows mac linux
 
-# 检查当前操作系统是否被支持
+# Check if current operating system is supported
 ifneq ($(filter $(OS),$(SUPPORTED_OS)), $(OS))
 $(error Unsupported operating system: '$(OS)'. Supported operating systems: $(SUPPORTED_OS))
 endif
 
-# 检查当前架构是否被支持
+# Check if current architecture is supported
 ifneq ($(filter $(ARCH),$(SUPPORTED_ARCHS)), $(ARCH))
 $(error Unsupported architecture: '$(ARCH)'. Supported architectures: $(SUPPORTED_ARCHS))
 endif
-
 
 .PHONY: help
 help:
@@ -48,7 +47,6 @@ help:
 	@echo "  build		Build binaries for the current platform and architecture"
 	@echo "  package	  Package binaries for the current platform and architecture"
 	@echo "  deploy	   Deploy packaged binaries for the current platform and architecture"
-
 
 .PHONY: version
 version:
@@ -75,8 +73,24 @@ clean:
 .PHONY: lint
 lint:
 	@echo "Running lint checks..."
-	@chmod +x lint.sh
-	@./lint.sh
+	@if ! command -v golangci-lint &> /dev/null; then \
+		echo "Error: golangci-lint is not installed"; \
+		echo "Please install it by following the instructions at: https://golangci-lint.run/usage/install/"; \
+		exit 1; \
+	fi
+	@for module in savt-client-api savt-client-cli savt-client-worker savt-client-gui; do \
+		if [ -d "$$module" ]; then \
+			if find "$$module" -name "*.go" -type f -print -quit | grep -q .; then \
+				echo "Linting $$module..."; \
+				cd "$$module" && golangci-lint run --timeout=5m ./... && cd ..; \
+				echo "----------------------------------------"; \
+			else \
+				echo "Warning: No Go files found in '$$module', skipping..."; \
+			fi; \
+		else \
+			echo "Warning: Module directory '$$module' does not exist, skipping..."; \
+		fi; \
+	done
 	@echo "Lint checks completed."
 
 .PHONY: build
@@ -113,7 +127,6 @@ build-windows-amd64:
 	powershell.exe -Command "cd savt-client-cli;   	 go build -o ../build/windows/amd64/savt-client-cli-$(VERSION)-$(OS)-amd64.exe"
 	powershell.exe -Command "cd savt-client-gui;	  go build -ldflags=\"-H windowsgui\" -o ../build/windows/amd64/savt-client-gui-$(VERSION)-$(OS)-amd64.exe"
 
-
 .PHONY: package
 package: package-$(OS)
 package-mac:
@@ -136,13 +149,13 @@ package-mac:
 	cp savt-client.icns $(OUTPUT_DIR)/$(OS)/$(ARCH)/app/Applications/savt-client.app/Contents/Resources/savt-client.icns
 #	iconutil -c icns -o $(OUTPUT_DIR)/$(OS)/$(ARCH)/app/Applications/savt-client.app/Contents/Resources/savt-client.icns $(ICON)
 	cp $(SERVICE_CONFIG_FILE) $(OUTPUT_DIR)/$(OS)/$(ARCH)/app/Applications/savt-client.app/Contents/MacOS/
-	# 提供 安装包
+	# Provide installation package
 	pkgbuild --identifier $(APP_ID) \
 			 --version $(VERSION) \
 			 --root "${OUTPUT_DIR}/$(OS)/${ARCH}/app" \
 			 --scripts ./savt-client-ci/mac/scripts/install \
 			 $(OUTPUT_DIR)/$(OS)/$(ARCH)/savt-client-$(VERSION)-$(OS)-$(ARCH).pkg
-	# 提供 卸载包
+	# Provide uninstallation package
 	pkgbuild --identifier com.example.savt-client.uninstall \
              --version $(VERSION) \
              --scripts ./savt-client-ci/mac/scripts/uninstall \
@@ -156,17 +169,7 @@ package-mac:
 	               -srcfolder $(OUTPUT_DIR)/$(OS)/$(ARCH)/dmg_contents \
 	               -ov -format UDZO \
 	               $(OUTPUT_DIR)/$(OS)/$(ARCH)/savt-client-$(VERSION)-$(OS)-$(ARCH).dmg
-#	create-dmg \
-#	  --volname "savt-client" \
-#	  --window-size 600 400 \
-#	  --icon-size 128 \
-#	  --icon "savt-client-$(VERSION)-$(OS)-$(ARCH).pkg" 150 150 \
-#	  --icon "savt-client-uninstall-$(VERSION)-$(OS)-$(ARCH).pkg" 450 150 \
-#	  --background "savt-client-ci/$(OS)/resources/background.png" \
-#	  --skip-jenkins \
-#	  $(OUTPUT_DIR)/$(OS)/$(ARCH)/savt-client-$(VERSION)-$(OS)-$(ARCH).dmg \
-#	  $(OUTPUT_DIR)/$(OS)/$(ARCH)/dmg_contents/ >/dev/null 2>&1
-    # 清理不必要的文件
+    # Clean up unnecessary files
 	rm -rf $(OUTPUT_DIR)/$(OS)/$(ARCH)/dmg_contents
 	rm -rf $(OUTPUT_DIR)/$(OS)/$(ARCH)/app
 	@echo "Packaging completed: $(OUTPUT_DIR)/$(OS)/$(ARCH)/savt-client-$(VERSION)-$(OS)-$(ARCH).dmg"
@@ -222,21 +225,13 @@ deploy-windows-amd64:
 	s3cmd put --recursive $(OUTPUT_DIR)/windows/amd64/savt-client-*.exe s3://ki3-frontend-static/${ENV}/sav/dist/savt-client-$(VERSION)/
 
 .PHONY: flow
-flow: clean build package deploy
+flow: clean build package
 	@echo "Flow process completed successfully!"
 
 
 
-.PHONY: deploy_doc
-deploy_doc:
-	s3cmd put --recursive savt-client-doc/* s3://ki3-frontend-static/${ENV}/sav/
 
-.PHONY: release_doc
-release_doc: clean
-	mkdir -p $(OUTPUT_DIR)/release
-	bash savt-client-ci/update_save_client_info.sh $(VERSION) $(ENV) $(OUTPUT_DIR)/release
-	s3cmd put --recursive savt-client-doc/* s3://ki3-frontend-static/${ENV}/sav/
-	s3cmd put $(OUTPUT_DIR)/release/save_client_info.json s3://ki3-frontend-static/${ENV}/sav/
+
 
 
 

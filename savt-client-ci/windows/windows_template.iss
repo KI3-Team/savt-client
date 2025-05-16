@@ -206,12 +206,12 @@ var
   Services: array[0..1] of String;
   I: Integer;
 begin
-  // 定义需要处理的服务名称
+  // Define service names to process
   Services[0] := 'savt-client.savt-client-worker';
   Services[1] := 'sav-client.sav-client-worker';
 
   try
-    // 遍历服务列表，逐一处理
+    // Iterate through service list and process each one
     for I := 0 to High(Services) do
     begin
       if ServiceExists(Services[I]) then
@@ -225,17 +225,17 @@ begin
       end;
     end;
 
-   // 删除 ProgramData 下的目录
+    // Delete ProgramData directory
     DeleteProgramDataFolder('savt-client');
     DeleteProgramDataFolder('sav-client');
-    // 初始化成功
+    // Initialization successful
     Log('Initialization completed successfully.');
     Result := True;
   except
-    // 捕获所有异常，记录日志并中止安装
+    // Catch all exceptions, log and abort installation
     Log('Initialization failed due to an unexpected error.');
     MsgBox('An error occurred during setup initialization. Please check the logs for details.', mbError, MB_OK);
-    Result := False; // 中止安装
+    Result := False; // Abort installation
   end;
 end;
 
@@ -245,7 +245,7 @@ var
   ErrorCode: Integer;
 begin
   try
-    // 检查是否已安装 Npcap
+    // Check if Npcap is installed
     if not IsNpcapInstalled then
     begin
       MsgBox('Npcap is not installed on your system. The installer will redirect you to the Npcap download page.', mbInformation, MB_OK);
@@ -260,7 +260,7 @@ begin
       Log('Npcap is already installed. Proceeding with installation...');
     end;
   except
-    // 捕获所有异常，记录日志并提示用户
+    // Catch all exceptions, log and notify user
     Log('Error during wizard initialization.');
     MsgBox('An unexpected error occurred during wizard initialization. Please check the logs for details.', mbError, MB_OK);
   end;
