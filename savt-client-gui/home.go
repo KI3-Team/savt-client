@@ -193,7 +193,7 @@ func createTitle(text string) *canvas.Text {
 }
 
 // createHomePage creates the main page layout
-func createHomePage(wm *worker.WorkerManager, win fyne.Window) fyne.CanvasObject {
+func createHomePage(_ *worker.WorkerManager, win fyne.Window) fyne.CanvasObject {
 	taskStatusGroup = widgets.NewTaskGroupWidget()
 	stepStatusLayout := container.NewVBox(
 		createTitle("Measurement Process"),

@@ -21,7 +21,46 @@ import (
 	"os"
 	"path/filepath"
 	"savt-client/savt-client-api/utils"
+	"strings"
 )
+
+const (
+	// File permissions
+	DirPerm  = 0750 // Directory permissions
+	FilePerm = 0640 // File permissions
+)
+
+// sanitizeFilePath ensures the file path is safe to use
+func sanitizeFilePath(path string) (string, error) {
+	// Get absolute path
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("invalid file path: %v", err)
+	}
+
+	// Get user config directory
+	userConfig, err := utils.GetUserConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user config: %v", err)
+	}
+	configDir, err := filepath.Abs(userConfig.ConfigDir)
+	if err != nil {
+		return "", fmt.Errorf("invalid config directory: %v", err)
+	}
+
+	// Check if the file path is within the config directory
+	if !strings.HasPrefix(absPath, configDir) {
+		return "", fmt.Errorf("file path must be within config directory")
+	}
+
+	// Clean the path to remove any .. or . components
+	cleanPath := filepath.Clean(absPath)
+	if !strings.HasPrefix(cleanPath, configDir) {
+		return "", fmt.Errorf("invalid file path after cleaning")
+	}
+
+	return cleanPath, nil
+}
 
 // saveJobId saves the job ID to a file
 func saveJobId(jobId string) error {
@@ -29,13 +68,30 @@ func saveJobId(jobId string) error {
 	if err != nil {
 		log.Fatalf("Failed to get system configuration: %v", err)
 	}
+
+	// Sanitize the job ID
+	if !isValidJobID(jobId) {
+		return fmt.Errorf("invalid job ID format")
+	}
+
 	jobIdFile := filepath.Join(userConfig.ConfigDir, "job_id.json")
-	dir := filepath.Dir(jobIdFile) // Get parent directory path
-	err = os.MkdirAll(dir, os.ModePerm)
+
+	// Sanitize and validate file path
+	sanitizedPath, err := sanitizeFilePath(jobIdFile)
+	if err != nil {
+		return fmt.Errorf("invalid file path: %v", err)
+	}
+
+	dir := filepath.Dir(sanitizedPath)
+
+	// Create directory with restricted permissions
+	err = os.MkdirAll(dir, DirPerm)
 	if err != nil {
 		return fmt.Errorf("failed to create parent directory: %v", err)
 	}
-	file, err := os.Create(jobIdFile)
+
+	// Create file with restricted permissions
+	file, err := os.OpenFile(sanitizedPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, FilePerm) // #nosec G304
 	if err != nil {
 		return fmt.Errorf("failed to create jobId file: %v", err)
 	}
@@ -54,17 +110,32 @@ func saveJobId(jobId string) error {
 	return nil
 }
 
+// isValidJobID checks if the job ID is valid
+func isValidJobID(jobId string) bool {
+	// Add your job ID validation logic here
+	// For example, check length, format, etc.
+	return len(jobId) > 0 && len(jobId) <= 100
+}
+
 // loadJobId loads the job ID from a file
 func loadJobId() (string, error) {
 	userConfig, err := utils.GetUserConfig()
 	if err != nil {
 		log.Fatalf("Failed to get system configuration: %v", err)
 	}
+
 	jobIdFile := filepath.Join(userConfig.ConfigDir, "job_id.json")
-	file, err := os.Open(jobIdFile)
+
+	// Sanitize and validate file path
+	sanitizedPath, err := sanitizeFilePath(jobIdFile)
+	if err != nil {
+		return "", fmt.Errorf("invalid file path: %v", err)
+	}
+
+	// Open file with read-only permissions
+	file, err := os.OpenFile(sanitizedPath, os.O_RDONLY, FilePerm) // #nosec G304
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Return empty string if file doesn't exist
 			return "", nil
 		}
 		return "", fmt.Errorf("failed to open jobId file: %v", err)
@@ -75,12 +146,17 @@ func loadJobId() (string, error) {
 		}
 	}()
 
-	// Read jobId
 	var jobId string
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&jobId)
 	if err != nil {
 		return "", fmt.Errorf("failed to read jobId from file: %v", err)
 	}
+
+	// Validate the loaded job ID
+	if !isValidJobID(jobId) {
+		return "", fmt.Errorf("invalid job ID in file")
+	}
+
 	return jobId, nil
 }

@@ -126,7 +126,7 @@ func NewFileLogger(config LoggerConfig, level LogLevel) *FileLogger {
 func (l *FileLogger) Debug(format string, v ...interface{}) {
 	if l.level <= Debug {
 		if len(v) == 0 {
-			l.debugLogger.Printf(format)
+			l.debugLogger.Print(format)
 		} else {
 			l.debugLogger.Printf(format, v...)
 		}
@@ -136,7 +136,7 @@ func (l *FileLogger) Debug(format string, v ...interface{}) {
 func (l *FileLogger) Info(format string, v ...interface{}) {
 	if l.level <= Info {
 		if len(v) == 0 {
-			l.infoLogger.Printf(format)
+			l.infoLogger.Print(format)
 		} else {
 			l.infoLogger.Printf(format, v...)
 		}
@@ -146,7 +146,7 @@ func (l *FileLogger) Info(format string, v ...interface{}) {
 func (l *FileLogger) Warn(format string, v ...interface{}) {
 	if l.level <= Warn {
 		if len(v) == 0 {
-			l.warnLogger.Printf(format)
+			l.warnLogger.Print(format)
 		} else {
 			l.warnLogger.Printf(format, v...)
 		}
@@ -156,7 +156,7 @@ func (l *FileLogger) Warn(format string, v ...interface{}) {
 func (l *FileLogger) Error(format string, v ...interface{}) {
 	if l.level <= Error {
 		if len(v) == 0 {
-			l.errorLogger.Printf(format)
+			l.errorLogger.Print(format)
 		} else {
 			l.errorLogger.Printf(format, v...)
 		}

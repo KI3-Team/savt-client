@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package net provides network protocol implementations for the SAV-T prober.
+// It includes implementations for IPv4, IPv6, ICMP, ICMPv6, UDP and other protocols
+// needed for network testing and validation.
 package net
 
 import (

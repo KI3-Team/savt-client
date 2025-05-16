@@ -3,11 +3,11 @@ import json
 import os
 
 
-# 获取或创建 JSON 文件
+# Get or create JSON file
 def get_or_create_json(output_path=None):
     json_file = os.path.join(output_path or os.path.dirname(os.path.abspath(__file__)), 'save_client_info.json')
 
-    # 如果文件不存在，创建一个空的 JSON 文件
+    # If file doesn't exist, create an empty JSON file
     if not os.path.exists(json_file):
         try:
             with open(json_file, 'w') as f:
@@ -19,7 +19,7 @@ def get_or_create_json(output_path=None):
     return json_file
 
 
-# 读取 JSON 文件
+# Read JSON file
 def load_json(json_file):
     try:
         with open(json_file, 'r') as f:
@@ -29,7 +29,7 @@ def load_json(json_file):
         return []
 
 
-# 写入 JSON 文件
+# Write JSON file
 def save_json(json_file, data):
     try:
         with open(json_file, 'w') as f:
@@ -39,7 +39,7 @@ def save_json(json_file, data):
         exit(1)
 
 
-# 根据 arch 和 os 生成描述
+# Generate description based on arch and os
 def get_description(arch, os_type):
     descriptions = {
         ('Windows', 'amd64'): "X86-based PCs with Intel/AMD processors; supports Windows 7 or later",
@@ -52,8 +52,7 @@ def get_description(arch, os_type):
     return descriptions.get((os_type, arch), "Unknown build")
 
 
-
-# 生成文件和链接信息
+# Generate file and link information
 def generate_record(version, os ,arch, file_format):
     os_format_name = ""
     if os == 'Windows':
@@ -69,21 +68,21 @@ def generate_record(version, os ,arch, file_format):
     return file_name, link
 
 
-# 更新或插入记录
+# Update or insert record
 def upsert_record(json_file, version, arch, size, sha, file_format, os_type):
     data = load_json(json_file)
 
     file_name, link = generate_record(version, os_type,arch, file_format)
     description = get_description(arch, os_type)
 
-    # 查找记录
+    # Find record
     existing_record = next(
         (record for record in data if arch in record and record['arch'] == arch and record['os'] == os_type and record['file'] == file_name),
         None
     )
 
     if existing_record:
-        # 更新记录
+        # Update record
         existing_record.update({
             'size': size,
             'sha': sha,
@@ -92,7 +91,7 @@ def upsert_record(json_file, version, arch, size, sha, file_format, os_type):
         })
         print(f"Record updated: {file_name}")
     else:
-        # 插入新记录
+        # Insert new record
         new_record = {
             "file": file_name,
             "link": link,
@@ -108,13 +107,13 @@ def upsert_record(json_file, version, arch, size, sha, file_format, os_type):
     save_json(json_file, data)
 
 
-# 清空 JSON 文件
+# Clear JSON file
 def clear_json(json_file):
     save_json(json_file, [])
     print(f"JSON file cleared: {json_file}")
 
 
-# 列出所有记录
+# List all records
 def list_records(json_file):
     data = load_json(json_file)
     if data:
@@ -125,12 +124,12 @@ def list_records(json_file):
         print("No records found.")
 
 
-# 主函数
+# Main function
 def main():
     parser = argparse.ArgumentParser(description="Manage save_client_info.json records.")
     parser.add_argument('--action', choices=['upsert', 'clear', 'list','adjust'], default='list', help="Action to perform.")
 
-    # upsert 需要的参数
+    # Parameters needed for upsert
     parser.add_argument('--version', help="Version of the file.")
     parser.add_argument('--arch', choices=['arm64', 'amd64'], required=False,help="Architecture of the file.")
     parser.add_argument('--size', help="Size of the file.")
@@ -138,12 +137,12 @@ def main():
     parser.add_argument('--file_format', help="Format of the file (e.g., exe, dmg, tar.gz).")
     parser.add_argument('--os', choices=['Windows', 'MacOS', 'Linux'],required=False, help="Operating system of the file.")
 
-    # output_path 参数
+    # output_path parameter
     parser.add_argument('--output_path', help="Path where save_client_info.json is located.", required=True)
 
     args = parser.parse_args()
 
-    # 获取 JSON 文件路径
+    # Get JSON file path
     json_file = get_or_create_json(args.output_path)
 
     if args.action == 'upsert':
@@ -152,7 +151,7 @@ def main():
             exit(1)
         upsert_record(json_file, args.version, args.arch, args.size, args.sha, args.file_format, args.os)
     elif args.action == 'adjust':
-        # 解析 JSON 文件内容并移动数组第一个元素到最后
+        # Parse JSON file content and move array first element to last
         data = load_json(json_file)
         if data and isinstance(data, list):
             data.append(data.pop(0))

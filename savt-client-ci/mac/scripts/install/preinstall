@@ -1,26 +1,27 @@
 #!/bin/bash
 set -e
 
-# 获取当前脚本所在目录
+# Get the directory where the current script is located
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DATA_DIR="/Library/Application Support/savt-client"
-# 日志文件路径
+# Log file path
 LOG_DIR="/tmp/savt-client"
 LOG_FILE="$LOG_DIR/preinstall.log"
 
-# 确保日志目录存在
+# Ensure log directory exists
 mkdir -p "$LOG_DIR"
 
-# 设置日志输出
+# Set up log output
 exec > >(tee -i "$LOG_FILE") 2>&1
 
 echo "Starting preinstall script..."
 
 echo "1. Running stop_savt_client_worker.sh ..."
+chmod +x "$SCRIPT_DIR/stop_savt_client_worker.sh"
 "$SCRIPT_DIR/stop_savt_client_worker.sh"
 
 echo "2. Clean history data ..."
 rm -rf DATA_DIR
 
-# 完成日志
+# Log completion
 echo "Preinstall script completed successfully!"

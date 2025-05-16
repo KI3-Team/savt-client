@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# 以管理员权限运行 PowerShell
+# Run PowerShell with administrator privileges
 
-# 定义安装目录
+# Define installation directory
 $installDir = "C:\Program Files\savt-client"
 
-# 导航到安装目录
+# Navigate to installation directory
 Set-Location -Path $installDir
 
-# 1. 创建服务
+# 1. Create service
 .\nssm.exe install "savt-client.savt-client-worker" "$installDir\savt-client-worker.exe"
 
-# 2. 设置服务显示名称
+# 2. Set service display name
 .\nssm.exe set "savt-client.savt-client-worker" DisplayName "SAV Client Worker"
 
-# 3. 设置服务描述
+# 3. Set service description
 .\nssm.exe set "savt-client.savt-client-worker" Description "SAV Client Worker Service"
 
-# 4. 设置服务为开机自动启动
+# 4. Set service to start automatically at boot
 .\nssm.exe set "savt-client.savt-client-worker" Start SERVICE_AUTO_START
 
-# 5. 启动服务
+# 5. Start service
 Start-Service -Name "savt-client.savt-client-worker"

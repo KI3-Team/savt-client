@@ -1,118 +1,76 @@
-# SAVT Client
+<h1 align="center">
+  <a href="https://github.com/dec0dOS/amazing-github-template">
+    <img src="icon.ico" alt="Logo" width="250" height="250">
+  </a>
+</h1>
+
+<div align="center">
+  SAV-T client is an active measurement tool which attempts to send and receive a series of spoofed UDP packets to/from servers distributed throughout the world. 
+  <br />
+  <br />
+
+  <a href="https://github.com/KI3-Team/savt-client/issues/new?assignees=&labels=bug&template=bug_report.md">Report a Bug</a>
+  ·
+  <a href="https://github.com/KI3-Team/savt-client/issues/new?assignees=&labels=enhancement&template=feature_request.md">Request a Feature</a>
+  .
+  <a href="https://ki3.org.cn/#/contact">Contact Us</a>
+</div>
+
+<div align="center">
+<br />
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+<a href="https://github.com/KI3-Team/savt-client/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/KI3-Team/savt-client?style=social?style=social"></a>
 
-SAVT Client is a high-performance network diagnostic tool for analyzing and optimizing network performance.
+<a href="https://github.com/KI3-Team/savt-client/releases"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/KI3-Team/savt-client"></a>
 
-## Features
+</div>
 
-- Network Latency Testing
-- Bandwidth Measurement
-- Route Tracing
-- Packet Analysis
-- Real-time Monitoring
-- Multi-platform Support
+
+## About
+
+SAV-T client is an active measurement tool which attempts to send and receive a series of spoofed UDP packets to/from servers distributed throughout the world. We use SAV-T clients to test a network’s ability of outbound or inbound spoofing periodically.
+
+**By participating and running SAV-T**, you help build a global dataset of source address validation capabilities, contributing to Internet security research and infrastructure protection. The collected results are anonymously visualized at [KI3 SAV-T Results Dashboard](https://ki3.org.cn/#/sav?sub=savTest&children=recentTestResults).
+
+
 
 ## Quick Start
 
-### Installation
+### User Guide
 
+- [User Guide](https://ki3.org.cn/#/sav?sub=savTest&children=clientDownload)
+
+### Developer Guide
+
+First, ensure you are in the project root directory and have installed all necessary dependencies：
+
+| System | Architecture | Version | Golang Version | Dependencies |
+|--------|--------------|---------|----------------|--------------|
+| Windows | x64/ARM64 | Windows 10 or higher | Go 1.21+ | - [make](https://www.gnu.org/software/make/)<br>- [jq](https://jqlang.github.io/jq/)<br>- [InnoSetup](https://jrsoftware.org/isinfo.php)<br>- [Cygwin](https://www.cygwin.com/) |
+| MacOS | Apple Silicon/Intel | macOS 10.15 or higher | Go 1.21+ | - [make](https://www.gnu.org/software/make/)<br>- [jq](https://jqlang.github.io/jq/)<br>- [create-dmg](https://github.com/create-dmg/create-dmg) |
+| Linux | x86_64/aarch64 | Linux Kernel 5.4+ | Go 1.21+ | - [make](https://www.gnu.org/software/make/)<br>- [jq](https://jqlang.github.io/jq/) |
+
+In most cases, the following commands are sufficient to build and install SAV-T-Client:
 ```bash
-# Install using package manager
-brew install savt-client  # macOS
-apt install savt-client   # Ubuntu/Debian
-
-# Or build from source
-git clone https://github.com/your-username/savt-client.git
-cd savt-client
-make build
+# Set version and set environment to test
+make version env-test
+# Use a single command to execute the complete process
+make flow
 ```
 
-### Usage
+After the build is complete, you can find the following files in the `build` directory:
 
-```bash
-# Basic usage
-savt-client ping example.com
+- MacOS: `.dmg` installation package
+- Windows: `.exe` installation package
+- Linux: `.tar.gz` archive
 
-# Bandwidth test
-savt-client speedtest
 
-# Route tracing
-savt-client trace example.com
-```
 
-## Documentation
-
-- [User Guide](docs/user-guide/README.md)
-- [API Documentation](docs/api/README.md)
-
-## Feedback
-
-If you encounter any issues or have feature suggestions while using the software, please provide feedback through [GitHub Issues](https://github.com/your-username/savt-client/issues).
-
-## Security
-
-If you discover a security vulnerability, please refer to our [Security Policy](SECURITY.md).
-
-## License
-
-This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
 
 ## Contact
-
-- Feedback: [GitHub Issues](https://github.com/your-username/savt-client/issues)
-- Email: [Project Email]
-- Website: [Project Website]
+- Website: [https://ki3.org.cn/#/contact](https://ki3.org.cn/#/contact)
+- Email: [ki3contact@163.com](mailto:ki3contact@163.com)
 
 
-![icon.ico](./icon.ico)
-
-
-# SAVT Client Project
-
-## Build Process
-
-### 0. Clean Build Environment
-```bash
-rm -rf build/
-```
-
-### 1. Compilation Phase
-```bash
-# Compile savt-client-api
-cd savt-client-api
-go build -o ../build/savt-client-api
-
-# Compile savt-client-cli
-cd ../savt-client-cli
-go build -o ../build/savt-client-cli
-```
-
-### 2. Packaging Phase
-```bash
-cd ..
-./package.sh
-```
-
-Goal: Unified packaging logic, ultimately combining the build artifacts (binary files) of these two modules into a single software package.
-
-Packaging format can be chosen based on the target platform:
-- MacOS: Use pkgbuild tool to package into dmg installer
-- Windows: Use InnoSetup tool to package into a single exe installer
-
-### 3. Integration and Deployment
-```bash
-make deploy
-```
-
-### Package Operation Example
-```bash
-git checkout release/2.0.0
-# a. Execute command on 2 mac arm64 and amd64 computers, manually ensure not to modify source code!!
-make flow
-# b. Execute command on 1 arm64 windows arm64 computer
-make flow
-# c. Execute command on 2 arm64/amd64 linux computers
-make flow
-```
 
