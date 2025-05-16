@@ -18,10 +18,12 @@ echo "Starting postinstall script..."
 
 # Call install_main.sh to install main program
 echo "Running install_main.sh..."
+chmod +x "$SCRIPT_DIR/install_main.sh"
 "$SCRIPT_DIR/install_main.sh"
 
 # Call install_savt_client_worker.sh to install service
 echo "Running install_savt_client_worker.sh..."
+chmod +x "$SCRIPT_DIR/install_savt_client_worker.sh"
 "$SCRIPT_DIR/install_savt_client_worker.sh"
 
 # Find currently mounted installation disk
