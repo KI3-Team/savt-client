@@ -10,6 +10,7 @@
 #define MyAppExeName "savt-client-gui-"
 #define MyWorkerExeName "savt-client-worker-"
 #define MyCliExeName "savt-client-cli-"
+#define NpcapInstaller "npcap-1.82.exe"
 
 [Setup]
 AppId={{A19E3A39-762E-41F1-9433-1E614CA30031}}
@@ -38,6 +39,7 @@ Source: "{#MyAppExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; DestDir: "{app}"; De
 Source: "{#MyWorkerExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; DestDir: "{app}"; DestName: "{#MyWorkerExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; Flags: ignoreversion restartreplace
 Source: "{#MyCliExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; DestDir: "{app}"; DestName: "{#MyCliExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; Flags: ignoreversion restartreplace
 Source: "service.json"; DestDir: "{app}"; Flags: ignoreversion restartreplace
+Source: "{#NpcapInstaller}"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 ; nssm.exe
 Source: "nssm-2.24\win64\nssm.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace
@@ -151,6 +153,46 @@ begin
   end;
 end;
 
+function InstallNpcap: Boolean;
+var
+  ResultCode: Integer;
+  NpcapInstallerPath: String;
+begin
+  NpcapInstallerPath := ExpandConstant('{tmp}\{#NpcapInstaller}');
+  
+  if not FileExists(NpcapInstallerPath) then
+  begin
+    Log('Npcap installer not found at: ' + NpcapInstallerPath);
+    MsgBox('Npcap installer not found. Please contact support.', mbError, MB_OK);
+    Result := False;
+    Exit;
+  end;
+
+  Log('Starting Npcap installation...');
+  if not ShellExec('runas', NpcapInstallerPath, '/S', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then
+  begin
+    Log('Failed to run Npcap installer. Error code: ' + IntToStr(ResultCode));
+    MsgBox('Failed to install Npcap. Please try again.', mbError, MB_OK);
+    Result := False;
+    Exit;
+  end;
+
+  // 等待一段时间确保安装完成
+  Sleep(5000);
+  
+  // 再次检查是否安装成功
+  if IsNpcapInstalled then
+  begin
+    Log('Npcap installation completed successfully.');
+    Result := True;
+  end
+  else
+  begin
+    Log('Npcap installation may have failed. Please check manually.');
+    MsgBox('Npcap installation may have failed. Please check if Npcap is installed correctly.', mbWarning, MB_OK);
+    Result := False;
+  end;
+end;
 
 function ServiceExists(ServiceName: String): Boolean;
 var
@@ -162,8 +204,6 @@ begin
   else
     Log('Service "' + ServiceName + '" does not exist or query failed. ResultCode: ' + IntToStr(ResultCode));
 end;
-
-
 
 procedure RunHiddenCommand(Command, Parameters: String);
 var
@@ -182,7 +222,6 @@ begin
   RunHiddenCommand('sc.exe', 'delete "' + ServiceName + '"');
 end;
 
-
 procedure DeleteProgramDataFolder(FolderName: String);
 var
   ProgramDataPath: String;
@@ -200,12 +239,22 @@ begin
     Log('Folder "' + ProgramDataPath + '" does not exist.');
 end;
 
-
 function InitializeSetup: Boolean;
 var
   Services: array[0..1] of String;
   I: Integer;
 begin
+  // 首先检查并安装 Npcap
+  if not IsNpcapInstalled then
+  begin
+    if not InstallNpcap then
+    begin
+      MsgBox('Npcap installation is required to continue. Setup will now exit.', mbError, MB_OK);
+      Result := False;
+      Exit;
+    end;
+  end;
+
   // Define service names to process
   Services[0] := 'savt-client.savt-client-worker';
   Services[1] := 'sav-client.sav-client-worker';
@@ -239,31 +288,10 @@ begin
   end;
 end;
 
-
 procedure InitializeWizard;
-var
-  ErrorCode: Integer;
 begin
-  try
-    // Check if Npcap is installed
-    if not IsNpcapInstalled then
-    begin
-      MsgBox('Npcap is not installed on your system. The installer will redirect you to the Npcap download page.', mbInformation, MB_OK);
-      if not ShellExec('open', 'https://npcap.com', '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode) then
-      begin
-        Log('Failed to open the Npcap download page. Error code: ' + IntToStr(ErrorCode));
-        MsgBox('Failed to open the Npcap download page. Please install Npcap manually and retry.', mbError, MB_OK);
-      end;
-    end
-    else
-    begin
-      Log('Npcap is already installed. Proceeding with installation...');
-    end;
-  except
-    // Catch all exceptions, log and notify user
-    Log('Error during wizard initialization.');
-    MsgBox('An unexpected error occurred during wizard initialization. Please check the logs for details.', mbError, MB_OK);
-  end;
+  // 移除原有的 Npcap 检查逻辑，因为已经在 InitializeSetup 中处理
+  Log('Wizard initialization completed.');
 end;
 
 
