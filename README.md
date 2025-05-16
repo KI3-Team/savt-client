@@ -56,7 +56,7 @@ In most cases, the following commands are sufficient to build and install SAV-T-
 # Set version and set environment to test
 make version env-test
 # Use a single command to execute the complete process
-make clean build package
+make flow
 ```
 
 After the build is complete, you can find the following files in the `build` directory:

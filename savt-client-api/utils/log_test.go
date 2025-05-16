@@ -16,17 +16,20 @@ package utils
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 )
 
 func TestFileLogger_Output(t *testing.T) {
-	tempFile, err := ioutil.TempFile("", "test-log-*.log")
+	tempFile, err := os.CreateTemp("", "test-log-*.log")
 	if err != nil {
 		t.Fatalf("Failed to create temp log file: %v", err)
 	}
-	defer os.Remove(tempFile.Name())
+	defer func() {
+		if err := os.Remove(tempFile.Name()); err != nil {
+			t.Errorf("Failed to remove temp file: %v", err)
+		}
+	}()
 
 	defaultWorkerLoggerConfig.LogFile = tempFile.Name()
 	defaultWorkerLoggerConfig.Console = false
@@ -36,9 +39,11 @@ func TestFileLogger_Output(t *testing.T) {
 	logger.Info("This is a test log message")
 	logger.Warn("This is a warning message")
 
-	tempFile.Close()
+	if err := tempFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
 
-	content, err := ioutil.ReadFile(tempFile.Name())
+	content, err := os.ReadFile(tempFile.Name())
 	if err != nil {
 		t.Fatalf("Failed to read temp log file: %v", err)
 	}
@@ -49,4 +54,24 @@ func TestFileLogger_Output(t *testing.T) {
 	if !bytes.Contains(content, []byte("This is a warning message")) {
 		t.Error("Log file does not contain expected warning message")
 	}
+}
+
+func TestLog(t *testing.T) {
+	// Create a temporary file for testing
+	tempFile, err := os.CreateTemp("", "log_test_*.log")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(tempFile.Name()); err != nil {
+			t.Errorf("Failed to remove temp file: %v", err)
+		}
+	}()
+
+	// Close the temp file
+	if err := tempFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	// ... existing code ...
 }

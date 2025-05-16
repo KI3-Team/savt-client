@@ -121,7 +121,13 @@ func (sm *ServiceManager) CheckForUpdate() (bool, string, error) {
 	if err != nil {
 		return false, "", fmt.Errorf("failed to fetch latest version: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			// Log the error but don't fail the request
+			logger := LoggerFactoryInstance.GetWorkerLogger()
+			logger.Error("Failed to close response body: %v", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return false, "", fmt.Errorf("unexpected response status: %s", resp.Status)

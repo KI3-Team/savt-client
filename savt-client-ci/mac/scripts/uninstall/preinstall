@@ -1,19 +1,19 @@
 #!/bin/bash
 set -e
 
-# 获取当前脚本所在目录
+# Get the directory where the current script is located
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="savt-client"
 APP_PATH="/Applications/$APP_NAME.app"
 DATA_DIR="/Library/Application Support/savt-client"
-# 日志文件路径
+# Log file path
 LOG_DIR="/tmp/savt-client"
 LOG_FILE="$LOG_DIR/preinstall.log"
 
-# 确保日志目录存在
+# Ensure log directory exists
 mkdir -p "$LOG_DIR"
 
-# 设置日志输出
+# Set up log output
 exec > >(tee -i "$LOG_FILE") 2>&1
 
 echo "Starting preinstall script..."
@@ -30,10 +30,10 @@ else
 fi
 
 echo "3. Clean application ..."
-# 检查应用程序是否存在
+# Check if application exists
 if [ -d "$APP_PATH" ]; then
     echo "Found $APP_PATH. Attempting to delete using AppleScript..."
-    # 使用 osascript 调用 AppleScript 删除应用
+    # Use osascript to call AppleScript to delete the application
     osascript <<EOF
 tell application "Finder"
     if exists application file "$APP_NAME" of folder "Applications" of startup disk then
@@ -46,5 +46,5 @@ else
     echo "Warning: $APP_PATH does not exist."
 fi
 
-# 完成日志
+# Log completion
 echo "Preinstall script completed successfully!"
