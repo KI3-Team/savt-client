@@ -112,7 +112,7 @@ func (h *UDP) MarshalBinary() ([]byte, error) {
 		return nil, err
 	}
 
-	// 计算长度
+	// Calculate length
 	if h.Len == 0 {
 		headerLen := UDPHeaderLen
 		payloadLen := len(h.Payload)

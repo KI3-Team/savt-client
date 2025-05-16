@@ -1,78 +1,78 @@
 ;----------------------------------------
-;  基本信息
+;  Basic Information
 ;----------------------------------------
 [Setup]
 AppName=SAV Client
 AppVersion=1.0
 DefaultDirName={pf}\savt-client
-; 确保需要管理员权限来安装服务
+; Ensure admin privileges are required to install service
 PrivilegesRequired=admin
 
-; 生成的安装文件名
+; Generated installer filename
 OutputBaseFilename=SavClientInstaller
 Compression=lzma
 SolidCompression=yes
 
 ;----------------------------------------
-;  要安装的文件列表
+;  Files to Install
 ;----------------------------------------
 [Files]
-; 将主程序 savt-client-worker.exe 复制到 {app} 目录
+; Copy main program savt-client-worker.exe to {app} directory
 Source: "path\to\savt-client-worker.exe"; DestDir: "{app}"; Flags: ignoreversion
 
-; 将 nssm.exe 也打包到安装目录（或者你喜欢的子目录）
-; 请把 nssm.exe 放在与脚本同级的 Source 路径下
+; Package nssm.exe to installation directory (or your preferred subdirectory)
+; Please place nssm.exe in the Source path at the same level as the script
 Source: "path\to\nssm.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 ;----------------------------------------
-;  安装后运行命令 (创建并配置服务)
+;  Post-installation Commands (Create and Configure Service)
 ;----------------------------------------
 [Run]
-; 1) 创建服务：指定服务名 "savt-client.savt-client-worker" 并让它执行 {app}\savt-client-worker.exe
+; 1) Create service: Specify service name "savt-client.savt-client-worker" and make it execute {app}\savt-client-worker.exe
 Filename: "{app}\nssm.exe"; \
     Parameters: "install ""savt-client.savt-client-worker"" ""{app}\savt-client-worker.exe"""; \
-    StatusMsg: "正在注册服务 (NSSM)..."; \
+    StatusMsg: "Registering service (NSSM)..."; \
     Flags: runhidden
 
-; 2) 可选：设置服务显示名 (非必须，仅示例)
+; 2) Optional: Set service display name (not required, example only)
 Filename: "{app}\nssm.exe"; \
     Parameters: "set ""savt-client.savt-client-worker"" DisplayName ""SAV Client Worker"""; \
-    StatusMsg: "设置服务显示名称..."; \
+    StatusMsg: "Setting service display name..."; \
     Flags: runhidden
 
-; 3) 可选：设置服务描述 (非必须，仅示例)
+; 3) Optional: Set service description (not required, example only)
 Filename: "{app}\nssm.exe"; \
     Parameters: "set ""savt-client.savt-client-worker"" Description ""SAV Client Worker Service"""; \
-    StatusMsg: "设置服务描述..."; \
+    StatusMsg: "Setting service description..."; \
     Flags: runhidden
 
-; 4) 设置服务为开机自动启动
+; 4) Set service to start automatically at boot
 Filename: "{app}\nssm.exe"; \
     Parameters: "set ""savt-client.savt-client-worker"" Start SERVICE_AUTO_START"; \
-    StatusMsg: "设置服务为开机自启动..."; \
+    StatusMsg: "Setting service to start automatically..."; \
     Flags: runhidden
 
-; 5) 启动服务
+; 5) Start service
 Filename: "net"; \
     Parameters: "start ""savt-client.savt-client-worker"""; \
-    StatusMsg: "正在启动服务..."; \
+    StatusMsg: "Starting service..."; \
     Flags: runhidden
 
 ;----------------------------------------
-;  卸载时运行命令 (删除服务)
+;  Uninstall Commands (Remove Service)
 ;----------------------------------------
 [UninstallRun]
-; 卸载时先停止并删除服务
+; Stop and remove service during uninstallation
 Filename: "{app}\nssm.exe"; \
     Parameters: "stop ""savt-client.savt-client-worker"" confirm"; \
-    StatusMsg: "正在卸载服务..."; \
+    StatusMsg: "Uninstalling service..."; \
     Flags: runhidden
 
 Filename: "{app}\nssm.exe"; \
     Parameters: "remove ""savt-client.savt-client-worker"" confirm"; \
-    StatusMsg: "正在卸载服务..."; \
+    StatusMsg: "Uninstalling service..."; \
     Flags: runhidden
 
 ;----------------------------------------
-;  完
+;  End
 ;----------------------------------------
