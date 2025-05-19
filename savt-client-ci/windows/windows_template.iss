@@ -10,6 +10,7 @@
 #define MyAppExeName "savt-client-gui-"
 #define MyWorkerExeName "savt-client-worker-"
 #define MyCliExeName "savt-client-cli-"
+#define NpcapInstaller "npcap-1.82.exe"
 
 [Setup]
 AppId={{A19E3A39-762E-41F1-9433-1E614CA30031}}
@@ -28,6 +29,7 @@ SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=admin
 AlwaysRestart=no
+RestartIfNeededByRun=no
 
 ;----------------------------------------
 ; Files to Install
@@ -38,6 +40,7 @@ Source: "{#MyAppExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; DestDir: "{app}"; De
 Source: "{#MyWorkerExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; DestDir: "{app}"; DestName: "{#MyWorkerExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; Flags: ignoreversion restartreplace
 Source: "{#MyCliExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; DestDir: "{app}"; DestName: "{#MyCliExeName}{#MyAppVersion}-{#OS}-{#ARCH}.exe"; Flags: ignoreversion restartreplace
 Source: "service.json"; DestDir: "{app}"; Flags: ignoreversion restartreplace
+Source: "{#NpcapInstaller}"; DestDir: "{app}"; Flags: deleteafterinstall
 
 ; nssm.exe
 Source: "nssm-2.24\win64\nssm.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace
@@ -59,6 +62,11 @@ Name: "desktopicon"; Description: "Create a shortcut on the desktop"; GroupDescr
 Name: "startmenuicon"; Description: "Create a shortcut in the Start Menu"; GroupDescription: "Additional icons:";
 
 [Run]
+; Install Npcap if not already installed
+Filename: "{app}\{#NpcapInstaller}"; \
+    StatusMsg: "Installing Npcap..."; \
+    Check: ShouldInstallNpcap; \
+    Flags: waituntilterminated shellexec
 
 ; Reinstall the service with new executable
 Filename: "{app}\nssm.exe"; \
@@ -130,6 +138,9 @@ Filename: "cmd.exe"; \
 
 
 [Code]
+var
+  UserAcceptedNpcap: Boolean;
+
 function IsNpcapInstalled: Boolean;
 var
   RegValue: String;
@@ -151,6 +162,29 @@ begin
   end;
 end;
 
+procedure InitializeWizard;
+begin
+  UserAcceptedNpcap := True;  // 默认接受
+  
+  if not IsNpcapInstalled then
+  begin
+    if MsgBox('This application requires Npcap to function properly.' + #13#10 + #13#10 +
+              'Npcap is not installed. Do you want to install it during setup?' + #13#10 + #13#10 +
+              'Click Yes to install Npcap and continue.' + #13#10 +
+              'Click No to exit the installation.',
+              mbConfirmation, MB_YESNO) = IDNO then
+    begin
+      UserAcceptedNpcap := False;
+      MsgBox('Installation cannot continue without Npcap. Setup will now exit.', mbError, MB_OK);
+      Abort;
+    end;
+  end;
+end;
+
+function ShouldInstallNpcap: Boolean;
+begin
+  Result := UserAcceptedNpcap and (not IsNpcapInstalled);
+end;
 
 function ServiceExists(ServiceName: String): Boolean;
 var
@@ -162,8 +196,6 @@ begin
   else
     Log('Service "' + ServiceName + '" does not exist or query failed. ResultCode: ' + IntToStr(ResultCode));
 end;
-
-
 
 procedure RunHiddenCommand(Command, Parameters: String);
 var
@@ -182,7 +214,6 @@ begin
   RunHiddenCommand('sc.exe', 'delete "' + ServiceName + '"');
 end;
 
-
 procedure DeleteProgramDataFolder(FolderName: String);
 var
   ProgramDataPath: String;
@@ -200,18 +231,17 @@ begin
     Log('Folder "' + ProgramDataPath + '" does not exist.');
 end;
 
-
 function InitializeSetup: Boolean;
 var
   Services: array[0..1] of String;
   I: Integer;
 begin
-  // 定义需要处理的服务名称
+  // Define service names to process
   Services[0] := 'savt-client.savt-client-worker';
   Services[1] := 'sav-client.sav-client-worker';
 
   try
-    // 遍历服务列表，逐一处理
+    // Iterate through service list and process each one
     for I := 0 to High(Services) do
     begin
       if ServiceExists(Services[I]) then
@@ -225,44 +255,17 @@ begin
       end;
     end;
 
-   // 删除 ProgramData 下的目录
+    // Delete ProgramData directory
     DeleteProgramDataFolder('savt-client');
     DeleteProgramDataFolder('sav-client');
-    // 初始化成功
+    // Initialization successful
     Log('Initialization completed successfully.');
     Result := True;
   except
-    // 捕获所有异常，记录日志并中止安装
+    // Catch all exceptions, log and abort installation
     Log('Initialization failed due to an unexpected error.');
     MsgBox('An error occurred during setup initialization. Please check the logs for details.', mbError, MB_OK);
-    Result := False; // 中止安装
-  end;
-end;
-
-
-procedure InitializeWizard;
-var
-  ErrorCode: Integer;
-begin
-  try
-    // 检查是否已安装 Npcap
-    if not IsNpcapInstalled then
-    begin
-      MsgBox('Npcap is not installed on your system. The installer will redirect you to the Npcap download page.', mbInformation, MB_OK);
-      if not ShellExec('open', 'https://npcap.com', '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode) then
-      begin
-        Log('Failed to open the Npcap download page. Error code: ' + IntToStr(ErrorCode));
-        MsgBox('Failed to open the Npcap download page. Please install Npcap manually and retry.', mbError, MB_OK);
-      end;
-    end
-    else
-    begin
-      Log('Npcap is already installed. Proceeding with installation...');
-    end;
-  except
-    // 捕获所有异常，记录日志并提示用户
-    Log('Error during wizard initialization.');
-    MsgBox('An unexpected error occurred during wizard initialization. Please check the logs for details.', mbError, MB_OK);
+    Result := False; // Abort installation
   end;
 end;
 

@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "savt-client/savt-client-api/savt" // Update the import path as necessary
@@ -38,7 +39,7 @@ var ServerAddress = "localhost:" + strconv.Itoa(utils.LocalPort)
 
 // TerminalStatuses defines the job statuses that will terminate the prober.
 var (
-	vm, err          = utils.GetServiceManagerIns()
+	vm, _            = utils.GetServiceManagerIns()
 	Version          = vm.GetVersion()
 	TerminalStatuses = map[pb.Status]bool{
 		pb.Status_SUCCEEDED:      true,
@@ -146,12 +147,16 @@ func handleConfig(args []string) {
 	}
 
 	// Establish a connection to the server.
-	conn, err := grpc.Dial(ServerAddress, grpc.WithInsecure())
+	conn, err := grpc.NewClient(ServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		fmt.Printf("Failed to connect to server at %s: %v", ServerAddress, err)
 		os.Exit(1)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			fmt.Printf("Failed to close connection: %v", err)
+		}
+	}()
 
 	client := pb.NewSavtIpcClient(conn)
 
@@ -224,12 +229,16 @@ func handleProber(args []string) {
 	}
 
 	// Establish a connection to the server.
-	conn, err := grpc.Dial(ServerAddress, grpc.WithInsecure())
+	conn, err := grpc.NewClient(ServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		fmt.Printf("Failed to connect to server at %s: %v", ServerAddress, err)
 		os.Exit(1)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			fmt.Printf("Failed to close connection: %v", err)
+		}
+	}()
 
 	client := pb.NewSavtIpcClient(conn)
 

@@ -26,7 +26,7 @@ import (
 )
 
 // createHistoryPage creates the history page
-func createHistoryPage(wm *worker.WorkerManager, win fyne.Window) (*fyne.Container, func()) {
+func createHistoryPage(_ *worker.WorkerManager, _ fyne.Window) (*fyne.Container, func()) {
 	headers := []string{"Date", "Type", "IPv", "Client Address", "ASN", "Outbound Private", "Outbound Routable", "Inbound Private", "Inbound Internal", "Menu"}
 	columnWidths := map[int]int{
 		0: 140,

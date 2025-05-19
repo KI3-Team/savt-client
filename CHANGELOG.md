@@ -1,39 +1,43 @@
-# 变更日志
+# Changelog
 
-本文档记录项目的所有重要更改。
+All notable changes to this project will be documented in this file.
 
-格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
-并且本项目遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)。
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [SAV-T-Client](https://github.com/KI3-Team/savt-client).
 
-## [未发布]
+## [2.1.0] - 2025-04-12
 
-### 新增
-- 初始项目结构
-- 基础功能实现
-- 文档和贡献指南
+### Changed
+- Reduced the number of background measurements during program startup
+- Added a "Status Indicator" column to the measurement tasks
+- Fixed the issue where the client measurement progress displayed abnormally when a measurement failed
 
-### 变更
-- 无
+## [2.0.0] - 2025-01-23
 
-### 修复
-- 无
+### Changed
+- Renamed the client software package from SAV-T to SAVT-Client according to the SAV-T specification
 
-### 安全
-- 添加安全策略
-- 实施基本的安全措施
+### Added
+- Added measurement history display module
+- Added scheduler module for automatic measurements
+- Added traceroute and tracefilter measurement modules
 
-## [1.0.0] - YYYY-MM-DD
+## [1.2.1] - 2024-07-19
 
-### 新增
-- 初始版本发布
-- 核心功能实现
-- 基础文档
+### Fixed
+- Fixed GUI bug
 
-### 变更
-- 无
+## [1.2.0] - 2024-07-15
 
-### 修复
-- 无
+### Added
+- Added the function to allow users to choose whether to make test results public or not
 
-### 安全
-- 初始安全配置 
+### Fixed
+- Fixed GUI display bug
+
+## [1.1.0] - 2024-07-08
+
+### Added
+- First public release, with the following functions:
+  - IPv4 and IPv6 outbound and inbound SAV configuration detection
+  - Adjacent netblock scanning to determine filtering granularity

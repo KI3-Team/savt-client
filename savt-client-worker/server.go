@@ -290,12 +290,12 @@ func (s *server) GetHistory(ctx context.Context, req *emptypb.Empty) (*pb.GetHis
 	s.historyMu.Lock()
 	defer s.historyMu.Unlock()
 	historyDirPath := historyDirPath
-	// Ensure history directory exists
+
 	if err := ensureDir(historyDirPath); err != nil {
 		log.Printf("Error ensuring history directory: %v", err)
 		return nil, fmt.Errorf("failed to ensure history directory: %v", err)
 	}
-	// Read all files in the directory
+
 	entries, err := os.ReadDir(historyDirPath)
 	if err != nil {
 		log.Printf("Error reading history directory: %v", err)

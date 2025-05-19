@@ -70,6 +70,10 @@ func IPv4HeaderToPseudoHeader(hdr *ipv4.Header, udplen int) ([]byte, error) {
 	if hdr == nil {
 		return nil, errors.New("got nil IPv4 header")
 	}
+	if udplen < 0 || udplen > 0xffff {
+		return nil, errors.New("UDP length out of range")
+	}
+
 	var pseudoheader [12]byte
 	copy(pseudoheader[0:4], hdr.Src.To4())
 	copy(pseudoheader[4:8], hdr.Dst.To4())
@@ -85,6 +89,10 @@ func IPv6HeaderToPseudoHeader(hdr *ipv6.Header) ([]byte, error) {
 	if hdr == nil {
 		return nil, errors.New("got nil IPv6 header")
 	}
+	if hdr.PayloadLen < 0 || hdr.PayloadLen > 0xffffffff {
+		return nil, errors.New("payload length out of range")
+	}
+
 	var pseudoheader [40]byte
 	copy(pseudoheader[0:16], hdr.Src.To16())
 	copy(pseudoheader[16:32], hdr.Dst.To16())
@@ -103,9 +111,19 @@ func (h *UDP) MarshalBinary() ([]byte, error) {
 	if err := binary.Write(&buf, binary.BigEndian, h.Dst); err != nil {
 		return nil, err
 	}
+
+	// Calculate length
 	if h.Len == 0 {
-		h.Len = uint16(UDPHeaderLen + len(h.Payload))
+		headerLen := UDPHeaderLen
+		payloadLen := len(h.Payload)
+		totalLen := headerLen + payloadLen
+
+		if totalLen < 0 || totalLen > 0xffff {
+			return nil, errors.New("UDP packet too large")
+		}
+		h.Len = uint16(totalLen)
 	}
+
 	if h.Len < 8 || h.Len > 0xffff-20 {
 		return nil, errors.New("invalid udp header len")
 	}
@@ -142,4 +160,14 @@ func (h *UDP) UnmarshalBinary(b []byte) error {
 	h.Len = binary.BigEndian.Uint16(b[4:6])
 	h.Csum = binary.BigEndian.Uint16(b[6:8])
 	return nil
+}
+
+// Next returns the next layer (implements Layer interface)
+func (h *UDP) Next() Layer {
+	return nil
+}
+
+// SetNext sets the next layer (implements Layer interface)
+func (h *UDP) SetNext(l Layer) {
+	// UDP is typically the final layer, so this is a no-op
 }
