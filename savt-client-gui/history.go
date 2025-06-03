@@ -44,9 +44,17 @@ func createHistoryPage(_ *worker.WorkerManager, _ fyne.Window) (*fyne.Container,
 	loadHistoryData := func() {
 		logger = globals.GUIAPP.Logger
 		proxy := globals.GUIAPP.Proxy
+		if proxy == nil {
+			logger.Error("Proxy is not initialized")
+			return
+		}
 		historyData, err := proxy.GetHistory()
 		if err != nil {
 			logger.Error("Failed to fetch table data: %v", err)
+			return
+		}
+		if historyData == nil {
+			logger.Error("historyData is nil")
 			return
 		}
 		jobs := historyData.Jobs

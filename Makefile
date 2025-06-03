@@ -37,6 +37,8 @@ ifneq ($(filter $(ARCH),$(SUPPORTED_ARCHS)), $(ARCH))
 $(error Unsupported architecture: '$(ARCH)'. Supported architectures: $(SUPPORTED_ARCHS))
 endif
 
+GOLANGCI_LINT ?= $(shell command -v golangci-lint 2>/dev/null || which golangci-lint 2>/dev/null || echo "")
+
 .PHONY: help
 help:
 	@echo "Usage: make [target]"
@@ -73,16 +75,16 @@ clean:
 .PHONY: lint
 lint:
 	@echo "Running lint checks..."
-	@if ! command -v golangci-lint &> /dev/null; then \
-		echo "Error: golangci-lint is not installed"; \
-		echo "Please install it by following the instructions at: https://golangci-lint.run/usage/install/"; \
+	@if [ -z "$(GOLANGCI_LINT)" ]; then \
+		echo "Error: golangci-lint is not installed or not in PATH."; \
+		echo "Please ensure golangci-lint is installed and in PATH or specified via GOLANGCI_LINT environment variable."; \
 		exit 1; \
 	fi
 	@for module in savt-client-api savt-client-cli savt-client-worker savt-client-gui; do \
 		if [ -d "$$module" ]; then \
 			if find "$$module" -name "*.go" -type f -print -quit | grep -q .; then \
 				echo "Linting $$module..."; \
-				cd "$$module" && golangci-lint run --timeout=5m ./... && cd ..; \
+				cd "$$module" && $(GOLANGCI_LINT) run --timeout=5m ./... && cd ..; \
 				echo "----------------------------------------"; \
 			else \
 				echo "Warning: No Go files found in '$$module', skipping..."; \

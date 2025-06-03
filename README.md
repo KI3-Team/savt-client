@@ -5,7 +5,6 @@
 </h1>
 
 <div align="center">
-  SAV-T client is an active measurement tool which attempts to send and receive a series of spoofed UDP packets to/from servers distributed throughout the world. 
   <br />
   <br />
 
