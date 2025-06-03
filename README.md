@@ -19,7 +19,7 @@
 <br />
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-<a href="https://github.com/KI3-Team/savt-client/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/KI3-Team/savt-client?style=social?style=social"></a>
+<a href="https://github.com/KI3-Team/savt-client/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/KI3-Team/savt-client?style=social"></a>
 
 <a href="https://github.com/KI3-Team/savt-client/releases"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/KI3-Team/savt-client"></a>
 
