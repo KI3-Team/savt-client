@@ -19,6 +19,7 @@ exec > >(tee -i "$LOG_FILE") 2>&1
 echo "Starting preinstall script..."
 
 echo "1. Running stop_savt_client_worker.sh ..."
+chmod +x "$SCRIPT_DIR/stop_savt_client_worker.sh"
 "$SCRIPT_DIR/stop_savt_client_worker.sh"
 
 echo "2. Clean history data ..."

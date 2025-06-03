@@ -58,10 +58,6 @@ func createHistoryPage(_ *worker.WorkerManager, _ fyne.Window) (*fyne.Container,
 			return
 		}
 		jobs := historyData.Jobs
-		if jobs == nil {
-			logger.Error("historyData.Jobs is nil")
-			return
-		}
 		var measurementResultWrappers []widgets.MeasurementResultWrapper
 		for _, job := range jobs {
 			if job.Ipv4.ClientAddress != "" {
