@@ -9,6 +9,7 @@ dashboard.json
 build/
 script/
 history/
+__pycache__/
 
 # Test binary, built with `go test -c`
 *.test
