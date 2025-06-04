@@ -41,7 +41,7 @@ func main() {
 	// 3. Initialize app
 	app := app.New()
 	globals.GUIAPP.App = app
-	app.Settings().SetTheme(theme.DefaultTheme())
+	app.Settings().SetTheme(theme.LightTheme()) //nolint
 	app.SetIcon(resourceIconApp1024Png)
 	vm, err := utils.GetServiceManagerIns()
 	if err != nil {

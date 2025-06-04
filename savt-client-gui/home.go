@@ -207,7 +207,7 @@ func createHomePage(_ *worker.WorkerManager, win fyne.Window) fyne.CanvasObject 
 		jobWidget,
 	)
 	progressBar = widgets.NewProgressBarWidget()
-	runButton = widget.NewButton("RUN", func() {
+	runButton = widget.NewButton(" RUN ", func() {
 		jobId = nil
 		progressBar.SetProgress(0, savt.Status_INITIAL)
 		taskStatusGroup.Clear()
