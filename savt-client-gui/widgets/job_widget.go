@@ -130,20 +130,24 @@ func (w *JobWidget) SetJob(job *savt.Job) {
 	if job == nil {
 		job = defaultJob
 	}
-	w.startTimeValue.SetText(formatStartTime(job.StartTime))
-	w.durationValue.SetText(formatDuration(job.DurationSeconds))
-	w.statusValue.SetText(formatStatus(job.Status))
-	w.tokenValue.SetText(formatToken(job.Token))
+	fyne.Do(func() {
+		w.startTimeValue.SetText(formatStartTime(job.StartTime))
+		w.durationValue.SetText(formatDuration(job.DurationSeconds))
+		w.statusValue.SetText(formatStatus(job.Status))
+		w.tokenValue.SetText(formatToken(job.Token))
 
-	switch job.Status {
-	case savt.Status_RUNNING, savt.Status_INITIAL:
-		w.copyButton.Hide()
-	default:
-		w.copyButton.Show()
-	}
+		switch job.Status {
+		case savt.Status_RUNNING, savt.Status_INITIAL:
+			w.copyButton.Hide()
+		default:
+			w.copyButton.Show()
+		}
+	})
 	w.ipv4Widget.SetResult(job.Ipv4)
 	w.ipv6Widget.SetResult(job.Ipv6)
-	w.Refresh()
+	fyne.Do(func() {
+		w.Refresh()
+	})
 }
 
 // Clear clears the job information
@@ -165,15 +169,23 @@ type jobRenderer struct {
 }
 
 func (r *jobRenderer) Layout(size fyne.Size) {
-	r.container.Resize(size)
+	fyne.Do(func() {
+		r.container.Resize(size)
+	})
 }
 
 func (r *jobRenderer) MinSize() fyne.Size {
-	return r.container.MinSize()
+	var min fyne.Size
+	fyne.Do(func() {
+		min = r.container.MinSize()
+	})
+	return min
 }
 
 func (r *jobRenderer) Refresh() {
-	r.container.Refresh()
+	fyne.Do(func() {
+		r.container.Refresh()
+	})
 }
 
 func (r *jobRenderer) Destroy() {}
@@ -185,8 +197,10 @@ func (w *JobWidget) copyToClipboard(text string) {
 	if text == "" {
 		return
 	}
-	win := fyne.CurrentApp().Driver().AllWindows()[0]
-	win.Clipboard().SetContent(text)
+	fyne.Do(func() {
+		win := fyne.CurrentApp().Driver().AllWindows()[0]
+		win.Clipboard().SetContent(text)
+	})
 }
 func formatStartTime(startTime *timestamppb.Timestamp) string {
 	if startTime == nil {

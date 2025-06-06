@@ -133,15 +133,15 @@ func NewMeasurementResultWidget(ipVersion IPVersion) *MeasurementResultWidget {
 }
 
 func (w *MeasurementResultWidget) applyResult(result *savt.MeasurementResult) {
-	w.clientAddressValue.SetText(formatAddress(result.ClientAddress))
-	w.asnValue.SetText(formatASN(result.Asn))
-	w.outboundPrivateIcon.Resource = getImageStatus(w.ipVersion, result.OutboundPrivate).Resource
-	w.outboundRoutableIcon.Resource = getImageStatus(w.ipVersion, result.OutboundRoutable).Resource
-
-	w.SpoofablePrefixLengthValue.SetText(formatSpoofablePrefixLength(result.SpoofablePrefixLength))
-
-	w.inboundPrivateIcon.Resource = getImageStatus(w.ipVersion, result.InboundPrivate).Resource
-	w.inboundInternalIcon.Resource = getImageStatus(w.ipVersion, result.InboundInternal).Resource
+	fyne.Do(func() {
+		w.clientAddressValue.SetText(formatAddress(result.ClientAddress))
+		w.asnValue.SetText(formatASN(result.Asn))
+		w.outboundPrivateIcon.Resource = getImageStatus(w.ipVersion, result.OutboundPrivate).Resource
+		w.outboundRoutableIcon.Resource = getImageStatus(w.ipVersion, result.OutboundRoutable).Resource
+		w.SpoofablePrefixLengthValue.SetText(formatSpoofablePrefixLength(result.SpoofablePrefixLength))
+		w.inboundPrivateIcon.Resource = getImageStatus(w.ipVersion, result.InboundPrivate).Resource
+		w.inboundInternalIcon.Resource = getImageStatus(w.ipVersion, result.InboundInternal).Resource
+	})
 }
 
 func (w *MeasurementResultWidget) SetResult(result *savt.MeasurementResult) {
@@ -150,12 +150,16 @@ func (w *MeasurementResultWidget) SetResult(result *savt.MeasurementResult) {
 	}
 	w.result = result
 	w.applyResult(result)
-	w.Refresh()
+	fyne.Do(func() {
+		w.Refresh()
+	})
 }
 
 func (w *MeasurementResultWidget) Clear() {
 	w.applyResult(defaultMeasurementResult)
-	w.Refresh()
+	fyne.Do(func() {
+		w.Refresh()
+	})
 }
 
 // CreateRenderer
@@ -173,15 +177,23 @@ type measurementResultRenderer struct {
 }
 
 func (r *measurementResultRenderer) Layout(size fyne.Size) {
-	r.container.Resize(size)
+	fyne.Do(func() {
+		r.container.Resize(size)
+	})
 }
 
 func (r *measurementResultRenderer) MinSize() fyne.Size {
-	return r.container.MinSize()
+	var min fyne.Size
+	fyne.Do(func() {
+		min = r.container.MinSize()
+	})
+	return min
 }
 
 func (r *measurementResultRenderer) Refresh() {
-	r.container.Refresh()
+	fyne.Do(func() {
+		r.container.Refresh()
+	})
 }
 
 func (r *measurementResultRenderer) Destroy() {}
@@ -189,15 +201,23 @@ func (r *measurementResultRenderer) Destroy() {}
 func (r *measurementResultRenderer) Objects() []fyne.CanvasObject {
 	return r.objects
 }
+
 func createStatusIcon(ipVersion IPVersion, status savt.MeasurementStatus) *canvas.Image {
-	icon := getImageStatus(ipVersion, status)
-	icon.SetMinSize(fyne.NewSize(72, 36))
-	icon.FillMode = canvas.ImageFillContain
+	var icon *canvas.Image
+	fyne.Do(func() {
+		icon = getImageStatus(ipVersion, status)
+		icon.SetMinSize(fyne.NewSize(72, 36))
+		icon.FillMode = canvas.ImageFillContain
+	})
 	return icon
 }
+
 func newBoldLabel(text string) *widget.Label {
-	label := widget.NewLabel(text)
-	label.TextStyle = fyne.TextStyle{Bold: true}
+	var label *widget.Label
+	fyne.Do(func() {
+		label = widget.NewLabel(text)
+		label.TextStyle = fyne.TextStyle{Bold: true}
+	})
 	return label
 }
 

@@ -71,15 +71,19 @@ func (p *ProgressBarWidget) SetProgress(progress int, status savt.Status) {
 	img := p.createSVGImage(svgContent)
 
 	p.imageContainer.Objects = []fyne.CanvasObject{img}
-	p.imageContainer.Refresh()
-	p.Refresh()
+	fyne.Do(func() {
+		p.imageContainer.Refresh()
+		p.Refresh()
+	})
 }
 
 // updateProgressText
 func (p *ProgressBarWidget) updateProgressText() {
 	p.progressText.Text = fmt.Sprintf("%d%%", p.progress)
 	p.progressText.Color = p.getColorByStatus(p.status)
-	p.progressText.Refresh()
+	fyne.Do(func() {
+		p.progressText.Refresh()
+	})
 }
 
 func (p *ProgressBarWidget) generateSVG(progress int, status savt.Status) string {
@@ -212,8 +216,10 @@ func (r *progressBarRenderer) MinSize() fyne.Size {
 
 // Refresh updates the widget appearance
 func (r *progressBarRenderer) Refresh() {
-	canvas.Refresh(r.imageContainer)
-	canvas.Refresh(r.progressText)
+	fyne.Do(func() {
+		canvas.Refresh(r.imageContainer)
+		canvas.Refresh(r.progressText)
+	})
 }
 
 // Destroy cleans up the renderer

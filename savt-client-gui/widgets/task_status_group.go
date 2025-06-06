@@ -103,7 +103,9 @@ func (r *taskStatusRowRenderer) MinSize() fyne.Size {
 }
 
 func (r *taskStatusRowRenderer) Refresh() {
-	r.container.Refresh()
+	fyne.Do(func() {
+		r.container.Refresh()
+	})
 }
 
 func (r *taskStatusRowRenderer) Destroy() {}
@@ -144,7 +146,9 @@ func (w *TaskGroupWidget) SetList(tasks []*savt.Task) {
 	}
 
 	w.container.Objects = newObjects
-	w.container.Refresh()
+	fyne.Do(func() {
+		w.container.Refresh()
+	})
 }
 
 // Clear clears all tasks in the task group

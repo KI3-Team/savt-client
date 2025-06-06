@@ -48,7 +48,7 @@ func NewLogWidget(defaultText string) *LogWidget {
 	logEntry.SetText(defaultText)
 
 	scroll := container.NewScroll(logEntry)
-	scroll.SetMinSize(fyne.NewSize(fyne.CurrentApp().Settings().Scale()*400, 180))
+	scroll.SetMinSize(fyne.NewSize(fyne.CurrentApp().Settings().Scale()*400, 200))
 
 	w := &LogWidget{
 		logEntry:   logEntry,
@@ -84,13 +84,14 @@ func (w *LogWidget) AppendLog(lines []string) {
 // refreshLog refreshes the log content
 func (w *LogWidget) refreshLog() {
 	text := strings.Join(w.buffer, "\n")
-	w.logEntry.SetText(text)
-	w.logEntry.Refresh()
-
-	if w.autoScroll {
-		w.scroll.ScrollToBottom()
-		w.scroll.Refresh()
-	}
+	fyne.Do(func() {
+		w.logEntry.SetText(text)
+		w.logEntry.Refresh()
+		if w.autoScroll {
+			w.scroll.ScrollToBottom()
+			w.scroll.Refresh()
+		}
+	})
 }
 
 // ClearLog clears the log
@@ -152,4 +153,10 @@ func (w *LogWidget) StopLogStream() {
 func (w *LogWidget) CreateRenderer() fyne.WidgetRenderer {
 	content := container.NewStack(w.scroll)
 	return widget.NewSimpleRenderer(content)
+}
+
+func (w *LogWidget) GetLogContent() string {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+	return strings.Join(w.buffer, "\n")
 }

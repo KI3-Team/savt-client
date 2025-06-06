@@ -29,6 +29,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
@@ -150,11 +151,15 @@ func updateJobStatus(jobId string) savt.Status {
 	printJobStatus(job)
 	switch job.Status {
 	case savt.Status_RUNNING:
-		runButton.Hide()
-		disableRunLabel.Show()
+		fyne.Do(func() {
+			runButton.Hide()
+			disableRunLabel.Show()
+		})
 	default:
-		runButton.Show()
-		disableRunLabel.Hide()
+		fyne.Do(func() {
+			runButton.Show()
+			disableRunLabel.Hide()
+		})
 	}
 	jobWidget.SetJob(job)
 	return job.Status
@@ -237,19 +242,53 @@ func createHomePage(_ *worker.WorkerManager, win fyne.Window) fyne.CanvasObject 
 	// Main container, using horizontal layout + Spacer to simulate proportions
 	size := float32(1280 - 150)
 	topLayout := container.New(layout.NewHBoxLayout(),
-		container.New(layout.NewGridWrapLayout(fyne.NewSize(0.25*size, win.Canvas().Size().Height)), progressActionButtonLayout),
+		container.New(layout.NewGridWrapLayout(fyne.NewSize(0.25*size, 0)), progressActionButtonLayout),
 		layout.NewSpacer(),
-		container.New(layout.NewGridWrapLayout(fyne.NewSize(0.25*size, win.Canvas().Size().Height)), stepStatusLayout),
+		container.New(layout.NewGridWrapLayout(fyne.NewSize(0.25*size, 0)), stepStatusLayout),
 		layout.NewSpacer(),
-		container.New(layout.NewGridWrapLayout(fyne.NewSize(0.5*size, win.Canvas().Size().Height)), resultSummaryLayout),
+		container.New(layout.NewGridWrapLayout(fyne.NewSize(0.5*size, 0)), resultSummaryLayout),
 	)
 	logPanel = widgets.NewLogWidget("")
+	consoleLogTitle := createTitle("Log")
+	downloadLink := widget.NewHyperlink("Download", nil)
+	downloadLink.TextStyle = fyne.TextStyle{}
+	downloadLink.OnTapped = func() {
+		if logPanel != nil {
+			logContent := logPanel.GetLogContent()
+			if len(logContent) > 0 {
+				fileDialog := dialog.NewFileSave(
+					func(uc fyne.URIWriteCloser, err error) {
+						if err == nil && uc != nil {
+							uc.Write([]byte(logContent))
+							uc.Close()
+						}
+					},
+					win,
+				)
+				now := time.Now()
+				filename := now.Format("savt_client_log_2006-01-02_15:04.txt")
+				fileDialog.SetFileName(filename)
+				fileDialog.Show()
+			}
+		}
+	}
+
+	logPanelSection := container.NewVBox(
+		container.NewHBox(
+			consoleLogTitle,
+			layout.NewSpacer(),
+			downloadLink,
+		),
+		container.NewVBox(logPanel),
+	)
+	gap := canvas.NewRectangle(color.Transparent)
+	gap.SetMinSize(fyne.NewSize(0, 24))
 	mainContent := container.NewVBox(
 		topLayout,
 		layout.NewSpacer(),
-		container.NewVBox(
-			logPanel,
-		),
+		gap,
+		layout.NewSpacer(),
+		logPanelSection,
 	)
 	loadedJobId, err := loadJobId()
 	if err != nil {

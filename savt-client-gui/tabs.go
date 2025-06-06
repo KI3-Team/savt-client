@@ -75,16 +75,24 @@ func showtabs(win fyne.Window) {
 					if err != nil {
 						logger.Error("Error starting worker:", err)
 						retryCount++
-						workerStatus.SetText(fmt.Sprintf("Worker Status: failed to start (%d/%d)", retryCount, maxRetries))
+						fyne.Do(func() {
+							workerStatus.SetText(fmt.Sprintf("Worker Status: failed to start (%d/%d)", retryCount, maxRetries))
+						})
 					} else {
-						workerStatus.SetText("Worker status: Running")
+						fyne.Do(func() {
+							workerStatus.SetText("Worker status: Running")
+						})
 						retryCount = 0
 					}
 				} else {
-					workerStatus.SetText("Worker status: failed to start (max retries reached)")
+					fyne.Do(func() {
+						workerStatus.SetText("Worker status: failed to start (max retries reached)")
+					})
 				}
 			} else {
-				workerStatus.SetText("Worker status: Running")
+				fyne.Do(func() {
+					workerStatus.SetText("Worker status: Running")
+				})
 			}
 			time.Sleep(5 * time.Second)
 		}
