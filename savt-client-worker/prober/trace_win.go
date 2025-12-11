@@ -24,10 +24,10 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	inet "savt-client/savt-client-worker/prober/net"
-
 	"github.com/google/gopacket/pcap"
 	"golang.org/x/net/ipv4"
+
+	inet "savt-client/savt-client-worker/prober/net"
 )
 
 func (d UDPv4) SendIPv4Trace() error {
@@ -39,11 +39,9 @@ func (d UDPv4) SendIPv4Trace() error {
 
 	for p := range d.NewIPv4TracePackets() {
 		for i := 0; i < 3; i++ {
-			err = handle.WritePacketData(p.Data())
-			if err != nil {
+			if err := handle.WritePacketData(p.Data()); err != nil {
 				return fmt.Errorf("failed to send packet: %w", err)
 			}
-
 			time.Sleep(d.Delay)
 		}
 	}
@@ -59,11 +57,9 @@ func (d UDPv6) SendIPv6Trace() error {
 
 	for p := range d.NewIPv6TracePackets() {
 		for i := 0; i < 3; i++ {
-			err = handle.WritePacketData(p.Data())
-			if err != nil {
+			if err := handle.WritePacketData(p.Data()); err != nil {
 				return fmt.Errorf("failed to send packet: %w", err)
 			}
-
 			time.Sleep(d.Delay)
 		}
 	}
@@ -86,7 +82,7 @@ func (d trUDPv4) SendReceiveIPv4Trace() ([]*ProbeUDPv4, []*ProbeResponseUDPv4, e
 	recvChan := make(chan []*ProbeResponseUDPv4, 1)
 	go func(errch chan error, rc chan []*ProbeResponseUDPv4) {
 		howLong := d.Delay*time.Duration(numPackets) + d.Timeout
-		received, err := d.ListenFor(d.Device.Pcap.Name, localUDPAddr.IP, howLong)
+		received, err := d.listenForPCAPv4(d.Device.Pcap.Name, localUDPAddr.IP, howLong)
 		errch <- err
 		rc <- received
 	}(recvErrors, recvChan)
@@ -100,9 +96,8 @@ func (d trUDPv4) SendReceiveIPv4Trace() ([]*ProbeUDPv4, []*ProbeResponseUDPv4, e
 	sent := make([]*ProbeUDPv4, 0, numPackets)
 	for p := range d.NewIPv4TracePackets(localUDPAddr.IP, d.Target) {
 		for i := 0; i < 3; i++ {
-			err = handle.WritePacketData(p.Gopkt.Data())
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to send IPv4 packet: %w", err)
+			if err := handle.WritePacketData(p.Gopkt.Data()); err != nil {
+				return nil, nil, fmt.Errorf("failed to send IPv4 packet (pcap): %w", err)
 			}
 			time.Sleep(d.Delay)
 		}
@@ -122,7 +117,7 @@ func (d trUDPv4) SendReceiveIPv4Trace() ([]*ProbeUDPv4, []*ProbeResponseUDPv4, e
 	return sent, received, nil
 }
 
-func (d trUDPv4) ListenFor(iface string, localIP net.IP, howLong time.Duration) ([]*ProbeResponseUDPv4, error) {
+func (d trUDPv4) listenForPCAPv4(iface string, localIP net.IP, howLong time.Duration) ([]*ProbeResponseUDPv4, error) {
 	packets := make([]*ProbeResponseUDPv4, 0)
 	deadline := time.Now().Add(howLong)
 
@@ -182,10 +177,9 @@ func (d trUDPv6) SendReceiveIPv6Trace() ([]*ProbeUDPv6, []*ProbeResponseUDPv6, e
 
 	recvErrors := make(chan error)
 	recvChan := make(chan []*ProbeResponseUDPv6, 1)
-
 	go func(errch chan error, rc chan []*ProbeResponseUDPv6) {
 		howLong := d.Delay*time.Duration(numPackets) + d.Timeout
-		received, err := d.ListenFor(d.Device.Pcap.Name, localUDPAddr.IP, howLong)
+		received, err := d.listenForPCAPv6(d.Device.Pcap.Name, localUDPAddr.IP, howLong)
 		errch <- err
 		rc <- received
 	}(recvErrors, recvChan)
@@ -199,9 +193,8 @@ func (d trUDPv6) SendReceiveIPv6Trace() ([]*ProbeUDPv6, []*ProbeResponseUDPv6, e
 	sent := make([]*ProbeUDPv6, 0, numPackets)
 	for p := range d.NewIPv6TracePackets(localUDPAddr.IP, d.Target) {
 		for i := 0; i < 3; i++ {
-			err = handle.WritePacketData(p.Gopkt.Data())
-			if err != nil {
-				return nil, nil, fmt.Errorf("WriteTo failed: %w", err)
+			if err := handle.WritePacketData(p.Gopkt.Data()); err != nil {
+				return nil, nil, fmt.Errorf("failed to send IPv6 packet (pcap): %w", err)
 			}
 			time.Sleep(d.Delay)
 		}
@@ -218,6 +211,7 @@ func (d trUDPv6) SendReceiveIPv6Trace() ([]*ProbeUDPv6, []*ProbeResponseUDPv6, e
 		}
 		sent = append(sent, &probe)
 	}
+
 	if err = <-recvErrors; err != nil {
 		return nil, nil, err
 	}
@@ -225,7 +219,7 @@ func (d trUDPv6) SendReceiveIPv6Trace() ([]*ProbeUDPv6, []*ProbeResponseUDPv6, e
 	return sent, received, nil
 }
 
-func (d trUDPv6) ListenFor(iface string, localIP net.IP, howLong time.Duration) ([]*ProbeResponseUDPv6, error) {
+func (d trUDPv6) listenForPCAPv6(iface string, localIP net.IP, howLong time.Duration) ([]*ProbeResponseUDPv6, error) {
 	packets := make([]*ProbeResponseUDPv6, 0)
 	deadline := time.Now().Add(howLong)
 
