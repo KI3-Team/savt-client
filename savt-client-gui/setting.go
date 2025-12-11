@@ -205,7 +205,9 @@ func createSettingPage(_ *worker.WorkerManager, win fyne.Window) (*fyne.Containe
 					finalContent,
 				),
 			}
-			contentContainer.Refresh()
+			fyne.Do(func() {
+				contentContainer.Refresh()
+			})
 		}()
 	}
 	return contentContainer, loadContent

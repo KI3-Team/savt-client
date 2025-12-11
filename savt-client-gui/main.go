@@ -49,7 +49,7 @@ func main() {
 		return
 	}
 	win := app.NewWindow(strings.Join([]string{"SAV-T Client V", vm.GetVersion()}, ""))
-	win.Resize(fyne.NewSize(1280, 680))
+	win.Resize(fyne.NewSize(1280, 720))
 	globals.GUIAPP.Win = win
 	showtabs(win)
 	//needUpdate, _ := vm.CheckForUpdate()
