@@ -22,11 +22,12 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	inet "savt-client/savt-client-worker/prober/net"
 
 	"github.com/google/gopacket/pcap"
 	"golang.org/x/net/ipv4"
-	"golang.org/x/sys/windows"
 )
 
 func (d UDPv4) SendIPv4Trace() error {
@@ -79,28 +80,13 @@ func (d trUDPv4) SendReceiveIPv4Trace() ([]*ProbeUDPv4, []*ProbeResponseUDPv4, e
 		return nil, nil, fmt.Errorf("invalid address type for %s: want %T, got %T", localAddr, localUDPAddr, localAddr)
 	}
 
-	socket, err := windows.Socket(windows.AF_INET, windows.SOCK_RAW, windows.IPPROTO_ICMP)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create socket: %w", err)
-	}
-	defer windows.Closesocket(socket)
-	var addr windows.SockaddrInet4
-	addr.Addr = [4]byte{0, 0, 0, 0} // 0.0.0.0 represents all local network interfaces
-	addr.Port = 0                   // 0 means the system will assign a port number
-
-	// Bind socket to the local address
-	err = windows.Bind(socket, &addr)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to bind socket: %w", err)
-	}
-
 	numPackets := int(d.NumPaths) * int(d.MaxTTL-d.MinTTL)
 
 	recvErrors := make(chan error)
 	recvChan := make(chan []*ProbeResponseUDPv4, 1)
 	go func(errch chan error, rc chan []*ProbeResponseUDPv4) {
 		howLong := d.Delay*time.Duration(numPackets) + d.Timeout
-		received, err := d.ListenFor(socket, howLong)
+		received, err := d.ListenFor(d.Device.Pcap.Name, localUDPAddr.IP, howLong)
 		errch <- err
 		rc <- received
 	}(recvErrors, recvChan)
@@ -136,47 +122,48 @@ func (d trUDPv4) SendReceiveIPv4Trace() ([]*ProbeUDPv4, []*ProbeResponseUDPv4, e
 	return sent, received, nil
 }
 
-func (d trUDPv4) ListenFor(socket windows.Handle, howLong time.Duration) ([]*ProbeResponseUDPv4, error) {
+func (d trUDPv4) ListenFor(iface string, localIP net.IP, howLong time.Duration) ([]*ProbeResponseUDPv4, error) {
 	packets := make([]*ProbeResponseUDPv4, 0)
 	deadline := time.Now().Add(howLong)
 
-	recvTimeout := time.Millisecond * 100 // Set the timeout for each receive operation
-	windows.SetsockoptInt(socket, windows.SOL_SOCKET, windows.SO_RCVTIMEO, int(recvTimeout.Milliseconds()))
-	for {
-		if deadline.Sub(time.Now()) <= 0 {
-			break
-		}
-
-		buf := make([]byte, 1024)
-		n, _, err := windows.Recvfrom(socket, buf, 0)
+	handle, err := pcap.OpenLive(iface, SnapLen, true, time.Second)
+	if err != nil {
+		return nil, err
+	}
+	defer handle.Close()
+	if err := handle.SetBPFFilter(fmt.Sprintf("icmp and dst host %s", localIP.String())); err != nil {
+		return nil, err
+	}
+	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+	for time.Now().Before(deadline) {
+		packet, err := packetSource.NextPacket()
 		if err != nil {
-			if errno, ok := err.(windows.Errno); ok {
-				if errno == windows.WSAETIMEDOUT {
-					// Receive timeout, continue the loop
-					continue
-				}
-				//fmt.Printf("Error receiving from socket: %v\n", err)
-				return nil, fmt.Errorf("failed to receive package: %w", err)
-			} else {
-				//fmt.Printf("Unexpected error type: %v\n", err)
-				return nil, fmt.Errorf("unexpected error type: %w", err)
-			}
+			continue
 		}
-
-		if n > 0 {
-			//fmt.Printf("Received %d bytes from socket\n", n)
-			receivedAt := time.Now()
-			ipHeader, err := ipv4.ParseHeader(buf[:n])
-			if err != nil {
-				//fmt.Printf("Failed to parse IPv4 header: %v\n", err)
-				continue
-			}
-			packets = append(packets, &ProbeResponseUDPv4{
-				Header:    ipHeader,
-				Payload:   buf[ipHeader.Len:n],
-				Timestamp: receivedAt,
-			})
+		ipLayer := packet.Layer(layers.LayerTypeIPv4)
+		icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
+		if ipLayer == nil || icmpLayer == nil {
+			continue
 		}
+		ip4 := ipLayer.(*layers.IPv4)
+		icmp := icmpLayer.(*layers.ICMPv4)
+		data := append(icmp.LayerContents(), icmp.LayerPayload()...)
+		ipHeader := &ipv4.Header{
+			Version:  int(ip4.Version),
+			Len:      int(ip4.IHL) * 4,
+			Protocol: int(ip4.Protocol),
+			TTL:      int(ip4.TTL),
+			Src:      ip4.SrcIP,
+			Dst:      ip4.DstIP,
+			TotalLen: int(ip4.Length),
+			ID:       int(ip4.Id),
+		}
+		packets = append(packets, &ProbeResponseUDPv4{
+			Header:    ipHeader,
+			Addr:      ip4.SrcIP,
+			Payload:   data,
+			Timestamp: time.Now(),
+		})
 	}
 	return packets, nil
 }
@@ -191,23 +178,6 @@ func (d trUDPv6) SendReceiveIPv6Trace() ([]*ProbeUDPv6, []*ProbeResponseUDPv6, e
 		return nil, nil, fmt.Errorf("invalid address type for %s: want %T, got %T", localAddr, localUDPAddr, localAddr)
 	}
 
-	// Create a raw socket for ICMPv6 protocol
-	socket, err := windows.Socket(windows.AF_INET6, windows.SOCK_RAW, windows.IPPROTO_ICMPV6)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create socket: %w", err)
-	}
-	defer windows.Closesocket(socket)
-	var addr windows.SockaddrInet6
-	addr.Addr = [16]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	//copy(addr.Addr[:], localUDPAddr.IP.To16())
-	addr.Port = 0 // 0 means the system will assign a port number
-
-	// Bind socket to the local address
-	err = windows.Bind(socket, &addr)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to bind socket: %w", err)
-	}
-
 	numPackets := int(d.NumPaths) * int(d.MaxHopLimit-d.MinHopLimit)
 
 	recvErrors := make(chan error)
@@ -215,7 +185,7 @@ func (d trUDPv6) SendReceiveIPv6Trace() ([]*ProbeUDPv6, []*ProbeResponseUDPv6, e
 
 	go func(errch chan error, rc chan []*ProbeResponseUDPv6) {
 		howLong := d.Delay*time.Duration(numPackets) + d.Timeout
-		received, err := d.ListenFor(socket, howLong)
+		received, err := d.ListenFor(d.Device.Pcap.Name, localUDPAddr.IP, howLong)
 		errch <- err
 		rc <- received
 	}(recvErrors, recvChan)
@@ -255,44 +225,38 @@ func (d trUDPv6) SendReceiveIPv6Trace() ([]*ProbeUDPv6, []*ProbeResponseUDPv6, e
 	return sent, received, nil
 }
 
-func (d trUDPv6) ListenFor(socket windows.Handle, howLong time.Duration) ([]*ProbeResponseUDPv6, error) {
+func (d trUDPv6) ListenFor(iface string, localIP net.IP, howLong time.Duration) ([]*ProbeResponseUDPv6, error) {
 	packets := make([]*ProbeResponseUDPv6, 0)
 	deadline := time.Now().Add(howLong)
 
-	recvTimeout := time.Millisecond * 100 // Set the timeout for each receive operation
-	windows.SetsockoptInt(socket, windows.SOL_SOCKET, windows.SO_RCVTIMEO, int(recvTimeout.Milliseconds()))
-	for {
-		if deadline.Sub(time.Now()) <= 0 {
-			break
-		}
-
-		data := make([]byte, 4096)
-		n, addr, err := windows.Recvfrom(socket, data, 0)
+	handle, err := pcap.OpenLive(iface, SnapLen, true, time.Second)
+	if err != nil {
+		return nil, err
+	}
+	defer handle.Close()
+	if err := handle.SetBPFFilter(fmt.Sprintf("icmp6 and dst host %s", localIP.String())); err != nil {
+		return nil, err
+	}
+	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+	for time.Now().Before(deadline) {
+		packet, err := packetSource.NextPacket()
 		if err != nil {
-			if errno, ok := err.(windows.Errno); ok {
-				if errno == windows.WSAETIMEDOUT {
-					//fmt.Println("Receive timed out, continuing...")
-					continue
-				}
-				//fmt.Printf("Error receiving from socket: %v\n", err)
-				return nil, fmt.Errorf("failed to receive package: %w", err)
-			} else {
-				//fmt.Printf("Unexpected error type: %v\n", err)
-				return nil, fmt.Errorf("unexpected error type: %w", err)
-			}
-		}
-		if n < 0 {
 			continue
 		}
-		//fmt.Printf("received! %d\n", n)
-		receivedAt := time.Now()
-		srcIP := net.IP(addr.(*windows.SockaddrInet6).Addr[0:])
-		packets = append(packets, &ProbeResponseUDPv6{
-			Data:      data[:n],
-			Addr:      srcIP,
-			Timestamp: receivedAt,
-		})
+		ipLayer := packet.Layer(layers.LayerTypeIPv6)
+		icmpLayer := packet.Layer(layers.LayerTypeICMPv6)
+		if ipLayer == nil || icmpLayer == nil {
+			continue
+		}
+		ip6 := ipLayer.(*layers.IPv6)
+		icmp := icmpLayer.(*layers.ICMPv6)
+		data := append(icmp.LayerContents(), icmp.LayerPayload()...)
 
+		packets = append(packets, &ProbeResponseUDPv6{
+			Data:      data,
+			Addr:      ip6.SrcIP,
+			Timestamp: time.Now(),
+		})
 	}
 	return packets, nil
 }
