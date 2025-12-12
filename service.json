@@ -1,4 +1,4 @@
 {
-  "version": "2.2.2",
-  "env": "test"
-}
+    "version": "2.2.2",
+    "env": "prod"
+} 
