@@ -22,8 +22,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/pcap"
+	"github.com/gopacket/gopacket"
+	"github.com/gopacket/gopacket/pcap"
 )
 
 const SnapLen = 1514

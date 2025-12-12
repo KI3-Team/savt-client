@@ -25,7 +25,7 @@ import (
 
 	inet "savt-client/savt-client-worker/prober/net"
 
-	"github.com/google/gopacket/pcap"
+	"github.com/gopacket/gopacket/pcap"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
 )
