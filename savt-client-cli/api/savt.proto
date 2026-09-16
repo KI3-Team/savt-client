@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+option go_package = "./savt";
+package savt;
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+
+
+service SavtIpc {
+  rpc Echo (EchoRequest) returns (EchoRequest) {}
+
+  rpc GetStatus (JobIdRequest) returns (Job) {}
+  rpc Start (google.protobuf.Empty) returns (Job) {}
+  rpc Kill (JobIdRequest) returns (Job) {}
+  rpc ReadLog(JobIdRequest) returns (stream LogEntry);
+  rpc GetConfig (google.protobuf.Empty) returns (Config) {}
+  rpc SetConfig (Config) returns (google.protobuf.Empty) {}
+
+  rpc GetHistory(google.protobuf.Empty) returns(GetHistoryResponse) {}
+}
+
+message EchoRequest {
+  string message = 1;
+}
+
+message JobIdRequest {
+  string job_id = 1;
+}
+
+enum Status {
+  INITIAL = 0;     // Initial state
+  RUNNING = 1;     // Running
+  SUCCEEDED = 2;     // Succeeded
+  SEMI_SUCCEEDED = 3; // Partially succeeded
+  FAILED = 4;   // Failed
+  CANCELLED= 5;      // Cancelled
+  API_UNKNOWN = 6;// Unknown, for GUI use
+}
+
+message Task {
+  int32 step = 1; // Step number: 1-IPv4 outbound test, 2-IPv4 inbound test, 3-IPv4 tracefilter test, 4-IPv4 traceroute test, 5-IPv6 outbound test, 6-IPv6 inbound test, 7-IPv6 tracefilter test, 8-IPv6 traceroute test
+  Status status = 2;
+  string status_desc = 3;
+}
+
+enum Jobtype {
+  MANUAL = 0;
+  SCHEDULED = 1;
+}
+
+message Job {
+  string job_id = 1;
+  google.protobuf.Timestamp start_time = 2;  // Using Timestamp type
+  int32 duration_seconds = 3; // Job execution time in seconds
+  Status status = 4;
+  repeated Task tasks = 5; // Add Task[] array, fixed 9 items
+  int32 progress_bar = 6; // 0~100
+  MeasurementResult ipv4 = 7; // IPv4 measurement results
+  MeasurementResult ipv6 = 8; // IPv6 measurement results
+  string token = 9; // Token for verification
+  Jobtype job_type = 10; // 0-Manual, 1-Automatic
+}
+
+// Configuration settings
+message Config {
+  bool enable_scheduler = 1; // Whether to enable scheduler, default=true
+  int32 complete_interval = 2; // Time interval for re-measurement after completion, default=608700, limit>=0
+  int32 incomplete_retry_interval = 3; // Wait time for retry after incomplete measurement, default=600, limit>=0
+  int32 check_network_interval = 4; // Time interval for checking network, default=120, limit>=60
+  int32 wait_after_change_interval = 5; // Wait time after network change before measurement, default=600, limit>=0
+  int32 retry_limit = 6; // Maximum number of retry attempts, default=3, limit>=1
+  bool is_public = 7; // Whether to show results on KI3, default=true
+}
+
+enum MeasurementStatus {
+  NOT_TESTED = 0;
+  BLOCKED = 1;     // Green
+  RECEIVED = 2;     // Red
+  REWRITTEN= 3;     // Orange
+}
+
+message MeasurementResult {
+  string client_address = 1; // IPv4 address, if available, otherwise ""
+  int32 asn = 2; // ASN of the IPv4 address, if available, otherwise ""
+  MeasurementStatus outbound_private = 3; // Outbound private measurement result, if available, otherwise ""
+  MeasurementStatus outbound_routable = 4; // Outbound routable measurement result, if available, otherwise ""
+  int32 spoofable_prefix_length = 5; // Spoofable prefix length of the IPv4 address, if available, otherwise ""
+  MeasurementStatus inbound_private = 6; // Inbound private measurement result, if available, otherwise ""
+  MeasurementStatus inbound_internal = 7; // Inbound internal measurement result, if available, otherwise ""
+}
+
+message LogEntry {
+  repeated string line = 1;     // Log content
+}
+
+message GetHistoryResponse {
+  repeated Job jobs = 1;
+}
