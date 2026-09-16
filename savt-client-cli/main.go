@@ -13,13 +13,22 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
 	"savt-client/savt-client-cli/common"
 )
 
-var server = flag.String("server", "http://47.242.254.61:41452", "nextserver url")
+var (
+	serverFlag = flag.String("server", "", "server url (缺省: 依据 service.json 的 env 自动解析)")
+	daemonFlag = flag.Bool("daemon", false, "守护模式: gRPC服务面(老GUI可遥控) + 定时调度器")
+)
+
+// serverURL 解析后的服务器地址(启动时填入)
+var serverURL string
 
 var (
 	token   []byte
@@ -42,20 +51,57 @@ func main() {
 	flag.Parse()
 	log.SetFlags(log.Ltime)
 
-	// 1. 创建会话
+	// 权限提示(测量需要 root/管理员)
+	if runtime.GOOS != "windows" && os.Geteuid() != 0 {
+		log.Printf("警告: 未以 root 运行, 测量(pcap注入/原始socket)将失败, 请使用 sudo")
+	}
+
+	if *daemonFlag {
+		runDaemon() // daemon.go: gRPC服务面 + 定时调度器
+		return
+	}
+
+	runOnce(true)
+}
+
+// runOnce 完成一次完整测量(建会话→六轮→finish)。
+// verbose=true 时打印结果JSON(一次性模式); 守护模式传false(结果走gRPC/历史记录)。
+// 返回服务端判定结果(失败时返回nil)。
+func runOnce(verbose bool) *common.Result {
+	// 0. 重置会话级状态(守护模式多次测量之间不串扰)
+	token = nil
+	vid = 0
+	allProbes = nil
+
+	// 1. 服务器地址解析 + 建会话(--server 优先, 否则 service.json(env) + 域名DNS; 逐个候选尝试)
+	candidates := resolveServerCandidates()
 	var info common.SessionInfo
-	postJSONinto(*server+"/api/session", nil, &info)
+	var err error
+	for _, cand := range candidates {
+		if err = postJSONintoErr(cand+"/api/session", nil, &info); err == nil {
+			serverURL = cand
+			break
+		}
+		log.Printf("server %s 不可达: %v", cand, err)
+	}
+	if serverURL == "" {
+		log.Printf("所有候选服务器均不可达")
+		return nil
+	}
 	token, _ = hex.DecodeString(info.TokenHex)
 	vid = info.ID
+	log.Printf("server %s", serverURL)
 	log.Printf("session %d created, rounds: %v", vid, info.Rounds)
 
 	// 2. 出口设备发现(伪造发送需要二层帧头)
-	srvUDP, err := urlToUDP(*server)
+	srvUDP, err := urlToUDP(serverURL)
 	if err != nil {
-		log.Fatal("server addr: ", err)
+		log.Printf("server addr: %v", err)
+		return nil
 	}
 	if d, err := common.DiscoverDevice(srvUDP); err != nil {
-		log.Fatal("device discovery: ", err)
+		log.Printf("device discovery: %v", err)
+		return nil
 	} else {
 		dev = d
 	}
@@ -69,11 +115,16 @@ func main() {
 			body = *report
 		}
 		var resp common.NextResponse
-		postJSONinto(fmt.Sprintf("%s/api/session/%d/next", *server, vid), body, &resp)
+		if err := postJSONintoErr(fmt.Sprintf("%s/api/session/%d/next", serverURL, vid), body, &resp); err != nil {
+			log.Printf("round %d: %v", round, err)
+			return nil
+		}
 		if resp.Op == "finish" {
 			raw, _ := json.MarshalIndent(resp.Result, "", " ")
-			fmt.Printf("\n===== 测量结果 =====\n%s\n", raw)
-			return
+			if verbose {
+				fmt.Printf("\n===== 测量结果 =====\n%s\n", raw)
+			}
+			return resp.Result
 		}
 		report = executeRound(round, resp.Name, resp.Actions)
 	}
@@ -146,7 +197,7 @@ func doSend(a common.Action, rep *common.ClientReport) {
 		sk := getSocket(a.SrcPort)
 		dstHost := a.DstAddr
 		if dstHost == "" {
-			u, _ := url.Parse(*server)
+			u, _ := url.Parse(serverURL)
 			dstHost = u.Hostname()
 		}
 		dst, err := net.ResolveUDPAddr("udp", net.JoinHostPort(dstHost, fmt.Sprintf("%d", a.DstPort)))
@@ -347,6 +398,94 @@ func getSocket(port int) *net.UDPConn {
 	}
 	sockets[port] = sk
 	return sk
+}
+
+// ---- 服务器地址解析(机制与老架构 savt-client-api 一致) ----
+
+type serviceConfig struct {
+	Version string `json:"version"`
+	Env     string `json:"env"`
+}
+
+// systemConfigDir 系统配置目录(与老架构 GetSysConfig 相同)
+func systemConfigDir() string {
+	switch runtime.GOOS {
+	case "windows":
+		return filepath.Join(os.Getenv("PROGRAMDATA"), "savt-client")
+	case "darwin":
+		return "/Library/Application Support/savt-client"
+	default:
+		return "/var/lib/savt-client"
+	}
+}
+
+// loadServiceConfig 按老架构的搜索顺序读 service.json: ../ → ./ → 系统配置目录
+func loadServiceConfig() (serviceConfig, bool) {
+	for _, p := range []string{
+		filepath.Join("..", "service.json"),
+		"service.json",
+		filepath.Join(systemConfigDir(), "service.json"),
+	} {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		var c serviceConfig
+		if err := json.Unmarshal(data, &c); err != nil || c.Env == "" {
+			continue
+		}
+		log.Printf("config %s: env=%s version=%s", p, c.Env, c.Version)
+		return c, true
+	}
+	return serviceConfig{}, false
+}
+
+// resolveServerCandidates 解析候选服务器: --server 优先; 否则 env→端口 + 域名DNS(与老架构一致)
+func resolveServerCandidates() []string {
+	if *serverFlag != "" {
+		return []string{*serverFlag}
+	}
+	cfg, ok := loadServiceConfig()
+	if !ok {
+		log.Fatalf("未指定 --server, 且未找到 service.json(搜索: ./、../、%s)", systemConfigDir())
+	}
+	port := "31452" // 非 test 环境
+	if cfg.Env == "test" {
+		port = "41452"
+	}
+	var cands []string
+	for _, dom := range []string{"v4.sav-t.ki3.org.cn", "v6.sav-t.ki3.org.cn"} {
+		ips, err := net.LookupIP(dom)
+		if err != nil {
+			log.Printf("DNS %s: %v", dom, err)
+			continue
+		}
+		for _, ip := range ips {
+			if v4 := ip.To4(); v4 != nil {
+				cands = append(cands, fmt.Sprintf("http://%s:%s", v4, port))
+			} else {
+				cands = append(cands, fmt.Sprintf("http://[%s]:%s", ip, port))
+			}
+		}
+	}
+	if len(cands) == 0 {
+		log.Fatal("无法解析服务器域名(v4/v6.sav-t.ki3.org.cn)")
+	}
+	return cands
+}
+
+// postJSONintoErr 同 postJSONinto 但返回错误(供多候选探测)
+func postJSONintoErr(u string, body any, out any) error {
+	raw, _ := json.Marshal(body)
+	resp, err := http.Post(u, "application/json", bytes.NewReader(raw))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("%s", resp.Status)
+	}
+	return json.NewDecoder(resp.Body).Decode(out)
 }
 
 func postJSONinto(url string, body any, out any) {
