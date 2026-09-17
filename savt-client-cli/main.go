@@ -108,6 +108,7 @@ func runOnce(verbose bool) *common.Result {
 	log.Printf("egress %s dev %s", dev.LocalIP, dev.PcapName)
 
 	// 3. 轮次循环
+	total := len(info.Rounds)
 	var report *common.ClientReport
 	for round := 0; ; round++ {
 		body := common.ClientReport{Round: int64(round)}
@@ -120,15 +121,28 @@ func runOnce(verbose bool) *common.Result {
 			return nil
 		}
 		if resp.Op == "finish" {
+			if roundProgress != nil {
+				roundProgress(resp.Name, round, total, true)
+			}
 			raw, _ := json.MarshalIndent(resp.Result, "", " ")
 			if verbose {
 				fmt.Printf("\n===== 测量结果 =====\n%s\n", raw)
 			}
 			return resp.Result
 		}
+		if roundProgress != nil {
+			roundProgress(resp.Name, round, total, false)
+		}
 		report = executeRound(round, resp.Name, resp.Actions)
+		if roundProgress != nil {
+			roundProgress(resp.Name, round, total, true)
+		}
 	}
 }
+
+// roundProgress 轮次进度钩子(守护模式注册用于GUI实时显示; 一次性模式为nil)。
+// name=轮名 round=轮序 total=总轮数 done=该轮是否完成(含finish时done=true)
+var roundProgress func(name string, round, total int, done bool)
 
 // executeRound 执行一轮原语动作,产出该轮报告。
 // 所有监听(icmp+udp)先于其它动作并发启动(icmp的差错在发送期间返回;多端口udp监听需同时开窗)。
