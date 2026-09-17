@@ -103,6 +103,7 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		"tracefilter": "Trace filter test",
 		"traceroute":  "Traceroute test",
 	}
+	v4Total := 0 // v4栈实际轮数(v6剔除NAT轮后不足6步,偏移须动态)
 	roundProgress = func(family, name string, round, total int, doneRound bool) {
 		dstate.mu.Lock()
 		defer dstate.mu.Unlock()
@@ -112,10 +113,16 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		if total <= 0 {
 			total = 6
 		}
-		// 步骤序号 = 栈偏移(IPv6排在IPv4后) + 栈内轮序; 每栈最多6步
+		if family == "IPv4" && total > v4Total {
+			v4Total = total
+		}
+		if v4Total == 0 {
+			v4Total = 6
+		}
+		// 步骤序号 = 栈偏移(IPv6排在IPv4后) + 栈内轮序
 		idx := round
 		if family == "IPv6" {
-			idx += 6
+			idx += v4Total
 		}
 		for len(dstate.job.Tasks) < idx+1 {
 			i := len(dstate.job.Tasks)
@@ -137,10 +144,17 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 				t.Status = pb.Status_RUNNING
 			}
 		}
-		// 进度: 已完成步骤数 / 步骤总数(双栈最多12步), 上限95%(100%留给终态)
+		// 进度: 已完成步骤数 / 步骤总数(双栈=v4轮数+v6轮数), 上限95%(100%留给终态)
 		steps := total
-		if *serverFlag == "" {
-			steps = total * 2 // 双栈
+		if *serverFlag == "" || *server6Flag != "" {
+			if family == "IPv4" {
+				steps = v4Total + 6 // v6未知前按上限估,见下修正
+			} else {
+				steps = v4Total + total
+			}
+			if family == "IPv4" && dstate.job.ProgressBar > 0 && int(steps) < len(dstate.job.Tasks) {
+				steps = len(dstate.job.Tasks) // 防倒退
+			}
 		}
 		finished := 0
 		for _, t := range dstate.job.Tasks {
@@ -148,7 +162,11 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 				finished++
 			}
 		}
-		dstate.job.ProgressBar = int32(5 + 90*finished/steps)
+		pb := int32(5 + 90*finished/steps)
+		if pb < dstate.job.ProgressBar {
+			pb = dstate.job.ProgressBar // 分母切换(v6实际轮数<估算)时防倒退
+		}
+		dstate.job.ProgressBar = pb
 	}
 
 	go func() {
