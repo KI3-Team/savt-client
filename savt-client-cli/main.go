@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"sav-next/common"
+	"savt-client/savt-client-cli/common"
 )
 
 var (
@@ -132,6 +132,15 @@ func runOnce(verbose bool, family string) *common.Result {
 		dev = d
 	}
 	log.Printf("egress %s dev %s", dev.LocalIP, dev.PcapName)
+
+	// 2.5 上一测量缓存的socket可能绑定在已失效的旧IP上(如WiFi/有线切换),
+	// 写包会静默失败(can't assign requested address)。socket生命周期=单次测量,每次重建。
+	sockMu.Lock()
+	for p, sk := range sockets {
+		sk.Close()
+		delete(sockets, p)
+	}
+	sockMu.Unlock()
 
 	// 3. 轮次循环
 	total := len(info.Rounds)
@@ -248,7 +257,9 @@ func doSend(a common.Action, rep *common.ClientReport) {
 			return
 		}
 		for i := 0; i < max(1, a.Count); i++ {
-			sk.WriteToUDP(common.EncodePunch(vid, token), dst)
+			if _, err := sk.WriteToUDP(common.EncodePunch(vid, token), dst); err != nil {
+				log.Printf("punch -> %s: %v", dst, err)
+			}
 		}
 		log.Printf("   send(auto/punch) -> %s from :%d", dst, a.SrcPort)
 		return

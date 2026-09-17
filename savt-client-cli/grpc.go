@@ -21,7 +21,7 @@ import (
 
 	pb "savt-client/savt-client-api/savt"
 
-	"sav-next/common"
+	"savt-client/savt-client-cli/common"
 )
 
 // ---- 任务/日志状态(GUI 可见的全部状态) ----
