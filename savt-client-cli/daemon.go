@@ -148,12 +148,14 @@ type scheduler struct {
 
 var sched = &scheduler{}
 
-// runMeasurement 执行一次测量(手动与定时共用),返回是否成功。
-func (s *scheduler) runMeasurement(scheduled bool) (bool, *common.Result) {
+// runMeasurement 执行一次测量(手动与定时共用)。
+// 双栈语义与老 worker 一致: 依次测 IPv4 与 IPv6(v6 不可达自动跳过);
+// --server 显式指定时只测该地址单栈。任一栈成功即算成功。
+func (s *scheduler) runMeasurement(scheduled bool) (bool, *common.Result, *common.Result) {
 	s.runningMu.Lock()
 	if s.running {
 		s.runningMu.Unlock()
-		return false, nil
+		return false, nil, nil
 	}
 	s.running = true
 	s.runningMu.Unlock()
@@ -167,9 +169,24 @@ func (s *scheduler) runMeasurement(scheduled bool) (bool, *common.Result) {
 	start := time.Now()
 	log.Printf("[daemon] %s 测量开始 (%s)", jobID, map[bool]string{true: "定时", false: "手动"}[scheduled])
 
-	res := runOnce(false)
+	families := []string{"4", "6"}
+	if *serverFlag != "" {
+		families = []string{""} // 手动指定服务器: 单栈
+	}
+	var res4, res6 *common.Result
+	for _, fam := range families {
+		res := runOnce(false, fam)
+		if res == nil {
+			continue
+		}
+		if measuredFamily(serverURL) == "IPv6" {
+			res6 = res
+		} else {
+			res4 = res
+		}
+	}
 
-	ok := res != nil
+	ok := res4 != nil || res6 != nil
 	rec := map[string]any{
 		"job_id":           jobID,
 		"status":           map[bool]int{true: 2, false: 4}[ok], // 与老pb状态对齐: 2=SUCCEEDED 4=FAILED
@@ -177,12 +194,15 @@ func (s *scheduler) runMeasurement(scheduled bool) (bool, *common.Result) {
 		"duration_seconds": int(time.Since(start).Seconds()),
 		"scheduled":        scheduled,
 	}
-	if res != nil {
-		rec["result"] = res
+	if res4 != nil {
+		rec["result"] = res4
+	}
+	if res6 != nil {
+		rec["result6"] = res6
 	}
 	writeHistory(jobID, rec)
-	log.Printf("[daemon] %s 测量结束 ok=%v 耗时%ds", jobID, ok, int(time.Since(start).Seconds()))
-	return ok, res
+	log.Printf("[daemon] %s 测量结束 ok=%v (v4=%v v6=%v) 耗时%ds", jobID, ok, res4 != nil, res6 != nil, int(time.Since(start).Seconds()))
+	return ok, res4, res6
 }
 
 // checkNetworkChange 网络变化侦测: 对比当前公网IP与缓存(经兼容层check端点)
@@ -249,7 +269,7 @@ func (s *scheduler) runSchedulerLoop() {
 			}
 			// 周期到点 → 测量
 			if tc.complete == 0 && cfg.Enable {
-				if ok, _ := s.runMeasurement(true); ok {
+				if ok, _, _ := s.runMeasurement(true); ok {
 					tc.complete = cfg.Complete
 					tc.incomplete = -1
 					tc.retryLimit = -1
@@ -266,7 +286,7 @@ func (s *scheduler) runSchedulerLoop() {
 					tc.complete = cfg.Complete // 放弃重试,回到周期
 					tc.incomplete = -1
 					tc.retryLimit = -1
-				} else if ok, _ := s.runMeasurement(true); ok {
+				} else if ok, _, _ := s.runMeasurement(true); ok {
 					tc.complete = cfg.Complete
 					tc.incomplete = -1
 					tc.retryLimit = -1
