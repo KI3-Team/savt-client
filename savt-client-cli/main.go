@@ -24,8 +24,9 @@ import (
 )
 
 var (
-	serverFlag = flag.String("server", "", "server url (缺省: 依据 service.json 的 env 自动解析)")
-	daemonFlag = flag.Bool("daemon", false, "守护模式: gRPC服务面(老GUI可遥控) + 定时调度器")
+	serverFlag  = flag.String("server", "", "server url (缺省: 依据 service.json 的 env 自动解析)")
+	server6Flag = flag.String("server6", "", "IPv6 server url (守护模式双栈的v6栈; 绕过DNS劫持环境如Surge fake-ip)")
+	daemonFlag  = flag.Bool("daemon", false, "守护模式: gRPC服务面(老GUI可遥控) + 定时调度器")
 )
 
 // serverURL 解析后的服务器地址(启动时填入)
@@ -84,10 +85,15 @@ func measuredFamily(serverURL string) string {
 // verbose=true 时打印结果JSON(一次性模式); 守护模式传false(结果走gRPC/历史记录)。
 // 返回服务端判定结果(失败时返回nil)。
 func runOnce(verbose bool, family string) *common.Result {
-	// 0. 重置会话级状态(守护模式多次测量之间不串扰)
+	// 0. 重置会话级状态(守护模式多次测量之间不串扰; serverURL残留会让失败遍历误用上一栈地址)
 	token = nil
 	vid = 0
 	allProbes = nil
+	serverURL = ""
+	if family != "" && *serverFlag == "" && len(resolveServerCandidatesFamily(family)) == 0 {
+		log.Printf("[%s] 无可用服务器候选(解析失败), 跳过该栈", family)
+		return nil
+	}
 
 	// 1. 服务器地址解析 + 建会话(family="4"/"6"指定栈, ""任意; --server 最优先)
 	candidates := resolveServerCandidatesFamily(family)
@@ -489,7 +495,13 @@ func resolveServerCandidates() []string {
 
 // resolveServerCandidatesFamily 按栈族过滤候选(""/"4"/"6"); --server 指定时原样返回。
 func resolveServerCandidatesFamily(family string) []string {
-	if *serverFlag != "" {
+	if family == "6" && *server6Flag != "" {
+		return []string{*server6Flag}
+	}
+	if *serverFlag != "" && *server6Flag == "" {
+		return []string{*serverFlag}
+	}
+	if *serverFlag != "" && family == "" {
 		return []string{*serverFlag}
 	}
 	cfg, ok := loadServiceConfig()

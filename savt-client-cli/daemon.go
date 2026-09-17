@@ -170,8 +170,8 @@ func (s *scheduler) runMeasurement(scheduled bool) (bool, *common.Result, *commo
 	log.Printf("[daemon] %s 测量开始 (%s)", jobID, map[bool]string{true: "定时", false: "手动"}[scheduled])
 
 	families := []string{"4", "6"}
-	if *serverFlag != "" {
-		families = []string{""} // 手动指定服务器: 单栈
+	if *serverFlag != "" && *server6Flag == "" {
+		families = []string{""} // 仅指定 --server: 单栈; 指定 --server6 时仍双栈(v6走显式地址)
 	}
 	var res4, res6 *common.Result
 	for _, fam := range families {
