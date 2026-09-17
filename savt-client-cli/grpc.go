@@ -113,6 +113,9 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		if total <= 0 {
 			total = 6
 		}
+		if round < 0 || round >= total {
+			return // 越界防护: 不为无效轮序创建任务(防幽灵步骤)
+		}
 		if family == "IPv4" && total > v4Total {
 			v4Total = total
 		}
