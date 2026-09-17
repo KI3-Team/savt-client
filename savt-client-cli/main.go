@@ -62,7 +62,9 @@ func main() {
 		return
 	}
 
-	runOnce(true, "")
+	if runOnce(true, "") == nil {
+		os.Exit(1)
+	}
 }
 
 // measuredFamily 由服务器地址推断本次测量的栈族
@@ -227,6 +229,9 @@ func doSend(a common.Action, rep *common.ClientReport) {
 	if a.SrcMode == "auto" && len(a.Probes) == 0 {
 		// 打洞: 内核socket真实源,单包(目的缺省为服务端)
 		sk := getSocket(a.SrcPort)
+		if sk == nil {
+			return
+		}
 		dstHost := a.DstAddr
 		if dstHost == "" {
 			u, _ := url.Parse(serverURL)
@@ -302,6 +307,10 @@ func doSend(a common.Action, rep *common.ClientReport) {
 
 func doListenUDP(a common.Action, rep *common.ClientReport) {
 	sk := getSocket(a.Port)
+	if sk == nil {
+		time.Sleep(time.Duration(a.DurationMs) * time.Millisecond) // bind失败: 保持窗口时长后空手返回
+		return
+	}
 	deadline := time.Now().Add(time.Duration(a.DurationMs) * time.Millisecond)
 	buf := make([]byte, 1500)
 	got := 0
@@ -426,7 +435,8 @@ func getSocket(port int) *net.UDPConn {
 	}
 	sk, err := net.ListenUDP("udp", &net.UDPAddr{IP: dev.LocalIP, Port: port})
 	if err != nil {
-		log.Fatalf("bind udp :%d: %v", port, err)
+		log.Printf("bind udp :%d: %v (端口被占? 本轮监听/打洞将无效)", port, err)
+		return nil
 	}
 	sockets[port] = sk
 	return sk
@@ -484,7 +494,8 @@ func resolveServerCandidatesFamily(family string) []string {
 	}
 	cfg, ok := loadServiceConfig()
 	if !ok {
-		log.Fatalf("未指定 --server, 且未找到 service.json(搜索: ./、../、%s)", systemConfigDir())
+		log.Printf("未指定 --server, 且未找到 service.json(搜索: ./、../、%s)", systemConfigDir())
+		return nil
 	}
 	port := "31452" // 非 test 环境
 	if cfg.Env == "test" {
@@ -493,6 +504,10 @@ func resolveServerCandidatesFamily(family string) []string {
 	var cands []string
 	for _, dom := range []string{"v4.sav-t.ki3.org.cn", "v6.sav-t.ki3.org.cn"} {
 		ips, err := net.LookupIP(dom)
+		if err != nil {
+			time.Sleep(500 * time.Millisecond) // 瞬时抖动重试一次(守护模式不容失败)
+			ips, err = net.LookupIP(dom)
+		}
 		if err != nil {
 			log.Printf("DNS %s: %v", dom, err)
 			continue
@@ -512,7 +527,7 @@ func resolveServerCandidatesFamily(family string) []string {
 		}
 	}
 	if len(cands) == 0 {
-		log.Fatal("无法解析服务器域名(v4/v6.sav-t.ki3.org.cn)")
+		log.Printf("无法解析服务器域名(v4/v6.sav-t.ki3.org.cn), 跳过本次[fam=%s]", family)
 	}
 	return cands
 }
@@ -529,21 +544,6 @@ func postJSONintoErr(u string, body any, out any) error {
 		return fmt.Errorf("%s", resp.Status)
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
-}
-
-func postJSONinto(url string, body any, out any) {
-	raw, _ := json.Marshal(body)
-	resp, err := http.Post(url, "application/json", bytes.NewReader(raw))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		log.Fatalf("%s -> %s", url, resp.Status)
-	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		log.Fatal(err)
-	}
 }
 
 // 记录见过的探测(供ICMP匹配tag)
