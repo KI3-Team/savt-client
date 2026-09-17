@@ -103,7 +103,7 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		"tracefilter": "Trace filter test",
 		"traceroute":  "Traceroute test",
 	}
-	roundProgress = func(name string, round, total int, doneRound bool) {
+	roundProgress = func(family, name string, round, total int, doneRound bool) {
 		dstate.mu.Lock()
 		defer dstate.mu.Unlock()
 		if dstate.job == nil || dstate.job.Status != pb.Status_RUNNING {
@@ -112,8 +112,12 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		if total <= 0 {
 			total = 6
 		}
-		// 步骤列表按需扩展到当前轮
-		for len(dstate.job.Tasks) < round+1 {
+		// 步骤序号 = 栈偏移(IPv6排在IPv4后) + 栈内轮序; 每栈最多6步
+		idx := round
+		if family == "IPv6" {
+			idx += 6
+		}
+		for len(dstate.job.Tasks) < idx+1 {
 			i := len(dstate.job.Tasks)
 			dstate.job.Tasks = append(dstate.job.Tasks, &pb.Task{
 				Step:       int32(i + 1),
@@ -121,12 +125,11 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 				StatusDesc: "Measurement step " + fmt.Sprint(i+1),
 			})
 		}
-		if t := dstate.job.Tasks[round]; t != nil {
-			t.StatusDesc = roundDesc[name]
-			if name == "" { // finish 通知: 无轮名,保持原desc
-				if t.StatusDesc == "" {
-					t.StatusDesc = "Measurement step " + fmt.Sprint(round+1)
-				}
+		if t := dstate.job.Tasks[idx]; t != nil {
+			if name != "" {
+				t.StatusDesc = family + ": " + roundDesc[name]
+			} else if t.StatusDesc == "" {
+				t.StatusDesc = family + " measurement"
 			}
 			if doneRound {
 				t.Status = pb.Status_SUCCEEDED
@@ -134,14 +137,18 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 				t.Status = pb.Status_RUNNING
 			}
 		}
-		// 进度: 已完成轮数占总轮数比例, 上限95%(100%留给终态)
+		// 进度: 已完成步骤数 / 步骤总数(双栈最多12步), 上限95%(100%留给终态)
+		steps := total
+		if *serverFlag == "" {
+			steps = total * 2 // 双栈
+		}
 		finished := 0
 		for _, t := range dstate.job.Tasks {
 			if t.Status == pb.Status_SUCCEEDED {
 				finished++
 			}
 		}
-		dstate.job.ProgressBar = int32(5 + 90*finished/total)
+		dstate.job.ProgressBar = int32(5 + 90*finished/steps)
 	}
 
 	go func() {
@@ -155,7 +162,7 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 			}
 		}()
 
-		ok, res := sched.runMeasurement(false)
+		ok, res4, res6 := sched.runMeasurement(false)
 		roundProgress = nil // 测量结束摘钩子(防定时测量误写GUI状态)
 
 		logOutputRestore()
@@ -178,8 +185,11 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		if ok {
 			dstate.job.ProgressBar = 100
 		}
-		if res != nil {
-			dstate.job.Ipv4 = resultToMeasurementResult(res)
+		if res4 != nil {
+			dstate.job.Ipv4 = resultToMeasurementResult(res4)
+		}
+		if res6 != nil {
+			dstate.job.Ipv6 = resultToMeasurementResult(res6)
 		}
 		dstate.mu.Unlock()
 		close(done)
@@ -352,13 +362,26 @@ func historyFileToJob(dir, name string) *pb.Job {
 	} else {
 		job.JobType = pb.Jobtype_MANUAL
 	}
-	if raw, ok := rec["result"]; ok {
-		if b, err := json.Marshal(raw); err == nil {
-			var r common.Result
-			if json.Unmarshal(b, &r) == nil {
-				job.Ipv4 = resultToMeasurementResult(&r)
-			}
+	toResult := func(key string) *common.Result {
+		raw, ok := rec[key]
+		if !ok {
+			return nil
 		}
+		b, err := json.Marshal(raw)
+		if err != nil {
+			return nil
+		}
+		var r common.Result
+		if json.Unmarshal(b, &r) != nil {
+			return nil
+		}
+		return &r
+	}
+	if r := toResult("result"); r != nil {
+		job.Ipv4 = resultToMeasurementResult(r)
+	}
+	if r := toResult("result6"); r != nil {
+		job.Ipv6 = resultToMeasurementResult(r)
 	}
 	return job
 }

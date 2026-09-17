@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -61,20 +62,33 @@ func main() {
 		return
 	}
 
-	runOnce(true)
+	runOnce(true, "")
+}
+
+// measuredFamily 由服务器地址推断本次测量的栈族
+func measuredFamily(serverURL string) string {
+	u, err := url.Parse(serverURL)
+	if err != nil {
+		return "IPv4"
+	}
+	host := u.Hostname()
+	if strings.Contains(host, ":") {
+		return "IPv6"
+	}
+	return "IPv4"
 }
 
 // runOnce 完成一次完整测量(建会话→六轮→finish)。
 // verbose=true 时打印结果JSON(一次性模式); 守护模式传false(结果走gRPC/历史记录)。
 // 返回服务端判定结果(失败时返回nil)。
-func runOnce(verbose bool) *common.Result {
+func runOnce(verbose bool, family string) *common.Result {
 	// 0. 重置会话级状态(守护模式多次测量之间不串扰)
 	token = nil
 	vid = 0
 	allProbes = nil
 
-	// 1. 服务器地址解析 + 建会话(--server 优先, 否则 service.json(env) + 域名DNS; 逐个候选尝试)
-	candidates := resolveServerCandidates()
+	// 1. 服务器地址解析 + 建会话(family="4"/"6"指定栈, ""任意; --server 最优先)
+	candidates := resolveServerCandidatesFamily(family)
 	var info common.SessionInfo
 	var err error
 	for _, cand := range candidates {
@@ -85,7 +99,11 @@ func runOnce(verbose bool) *common.Result {
 		log.Printf("server %s 不可达: %v", cand, err)
 	}
 	if serverURL == "" {
-		log.Printf("所有候选服务器均不可达")
+		if family == "6" {
+			log.Printf("IPv6 服务器不可达(本机可能无 v6 路由), 跳过 v6 测量")
+		} else {
+			log.Printf("所有候选服务器均不可达")
+		}
 		return nil
 	}
 	token, _ = hex.DecodeString(info.TokenHex)
@@ -122,7 +140,7 @@ func runOnce(verbose bool) *common.Result {
 		}
 		if resp.Op == "finish" {
 			if roundProgress != nil {
-				roundProgress(resp.Name, round, total, true)
+				roundProgress(measuredFamily(serverURL), resp.Name, round, total, true)
 			}
 			raw, _ := json.MarshalIndent(resp.Result, "", " ")
 			if verbose {
@@ -131,18 +149,18 @@ func runOnce(verbose bool) *common.Result {
 			return resp.Result
 		}
 		if roundProgress != nil {
-			roundProgress(resp.Name, round, total, false)
+			roundProgress(measuredFamily(serverURL), resp.Name, round, total, false)
 		}
 		report = executeRound(round, resp.Name, resp.Actions)
 		if roundProgress != nil {
-			roundProgress(resp.Name, round, total, true)
+			roundProgress(measuredFamily(serverURL), resp.Name, round, total, true)
 		}
 	}
 }
 
 // roundProgress 轮次进度钩子(守护模式注册用于GUI实时显示; 一次性模式为nil)。
-// name=轮名 round=轮序 total=总轮数 done=该轮是否完成(含finish时done=true)
-var roundProgress func(name string, round, total int, done bool)
+// family="IPv4"/"IPv6" name=轮名 round=轮序(栈内) total=栈内总轮数 done=该轮是否完成
+var roundProgress func(family, name string, round, total int, done bool)
 
 // executeRound 执行一轮原语动作,产出该轮报告。
 // 所有监听(icmp+udp)先于其它动作并发启动(icmp的差错在发送期间返回;多端口udp监听需同时开窗)。
@@ -456,6 +474,11 @@ func loadServiceConfig() (serviceConfig, bool) {
 
 // resolveServerCandidates 解析候选服务器: --server 优先; 否则 env→端口 + 域名DNS(与老架构一致)
 func resolveServerCandidates() []string {
+	return resolveServerCandidatesFamily("")
+}
+
+// resolveServerCandidatesFamily 按栈族过滤候选(""/"4"/"6"); --server 指定时原样返回。
+func resolveServerCandidatesFamily(family string) []string {
 	if *serverFlag != "" {
 		return []string{*serverFlag}
 	}
@@ -476,8 +499,14 @@ func resolveServerCandidates() []string {
 		}
 		for _, ip := range ips {
 			if v4 := ip.To4(); v4 != nil {
+				if family == "6" {
+					continue
+				}
 				cands = append(cands, fmt.Sprintf("http://%s:%s", v4, port))
 			} else {
+				if family == "4" {
+					continue
+				}
 				cands = append(cands, fmt.Sprintf("http://[%s]:%s", ip, port))
 			}
 		}
