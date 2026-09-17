@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"savt-client/savt-client-cli/common"
+	"sav-next/common"
 )
 
 var (
@@ -147,9 +147,8 @@ func runOnce(verbose bool, family string) *common.Result {
 			return nil
 		}
 		if resp.Op == "finish" {
-			if roundProgress != nil {
-				roundProgress(measuredFamily(serverURL), resp.Name, round, total, true)
-			}
+			// 不再调用roundProgress: 此处round已自增到最后一轮+1,会产生幽灵步骤;
+			// 最后一轮的完成态已在上一次executeRound之后标记。
 			raw, _ := json.MarshalIndent(resp.Result, "", " ")
 			if verbose {
 				fmt.Printf("\n===== 测量结果 =====\n%s\n", raw)
