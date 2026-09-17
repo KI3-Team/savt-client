@@ -65,10 +65,12 @@ type grpcServer struct {
 }
 
 func (g *grpcServer) Echo(ctx context.Context, in *pb.EchoRequest) (*pb.EchoRequest, error) {
+	log.Printf("[grpc] Echo")
 	return in, nil
 }
 
 func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, error) {
+	log.Printf("[grpc] Start")
 	sched.runningMu.Lock()
 	if sched.running {
 		sched.runningMu.Unlock()
@@ -84,12 +86,63 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		StartTime: timestamppb.Now(),
 		Token:     "",
 		JobType:   pb.Jobtype_MANUAL,
+		Tasks:     []*pb.Task{},
 	}
 	dstate.logs = nil
 	dstate.started = time.Now()
 	done := make(chan struct{})
 	dstate.doneCh = done
 	dstate.mu.Unlock()
+
+	// 轮次进度钩子: 测量过程实时点亮任务步骤与进度条(新协议轮次,GUI每5s拉GetStatus)
+	roundDesc := map[string]string{
+		"natmap":      "NAT mapping test",
+		"natfilter":   "NAT filtering test",
+		"inbound":     "Inbound SAV test",
+		"outbound":    "Outbound SAV test",
+		"tracefilter": "Trace filter test",
+		"traceroute":  "Traceroute test",
+	}
+	roundProgress = func(name string, round, total int, doneRound bool) {
+		dstate.mu.Lock()
+		defer dstate.mu.Unlock()
+		if dstate.job == nil || dstate.job.Status != pb.Status_RUNNING {
+			return
+		}
+		if total <= 0 {
+			total = 6
+		}
+		// 步骤列表按需扩展到当前轮
+		for len(dstate.job.Tasks) < round+1 {
+			i := len(dstate.job.Tasks)
+			dstate.job.Tasks = append(dstate.job.Tasks, &pb.Task{
+				Step:       int32(i + 1),
+				Status:     pb.Status_INITIAL,
+				StatusDesc: "Measurement step " + fmt.Sprint(i+1),
+			})
+		}
+		if t := dstate.job.Tasks[round]; t != nil {
+			t.StatusDesc = roundDesc[name]
+			if name == "" { // finish 通知: 无轮名,保持原desc
+				if t.StatusDesc == "" {
+					t.StatusDesc = "Measurement step " + fmt.Sprint(round+1)
+				}
+			}
+			if doneRound {
+				t.Status = pb.Status_SUCCEEDED
+			} else {
+				t.Status = pb.Status_RUNNING
+			}
+		}
+		// 进度: 已完成轮数占总轮数比例, 上限95%(100%留给终态)
+		finished := 0
+		for _, t := range dstate.job.Tasks {
+			if t.Status == pb.Status_SUCCEEDED {
+				finished++
+			}
+		}
+		dstate.job.ProgressBar = int32(5 + 90*finished/total)
+	}
 
 	go func() {
 		// 捕获测量日志进 GUI 流
@@ -103,6 +156,7 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		}()
 
 		ok, res := sched.runMeasurement(false)
+		roundProgress = nil // 测量结束摘钩子(防定时测量误写GUI状态)
 
 		logOutputRestore()
 		close(lines)
@@ -114,6 +168,16 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		}
 		dstate.job.Status = st
 		dstate.job.DurationSeconds = int32(time.Since(dstate.started).Seconds())
+		for _, t := range dstate.job.Tasks {
+			if ok {
+				t.Status = pb.Status_SUCCEEDED
+			} else if t.Status == pb.Status_RUNNING {
+				t.Status = pb.Status_FAILED
+			}
+		}
+		if ok {
+			dstate.job.ProgressBar = 100
+		}
 		if res != nil {
 			dstate.job.Ipv4 = resultToMeasurementResult(res)
 		}
@@ -127,6 +191,7 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 }
 
 func (g *grpcServer) Kill(ctx context.Context, in *pb.JobIdRequest) (*pb.Job, error) {
+	log.Printf("[grpc] Kill")
 	// 新核心的单次测量不长短可控(轮次由服务端下发);此实现返回当前状态。
 	dstate.mu.Lock()
 	defer dstate.mu.Unlock()
@@ -137,6 +202,7 @@ func (g *grpcServer) Kill(ctx context.Context, in *pb.JobIdRequest) (*pb.Job, er
 }
 
 func (g *grpcServer) GetStatus(ctx context.Context, in *pb.JobIdRequest) (*pb.Job, error) {
+	log.Printf("[grpc] GetStatus")
 	dstate.mu.Lock()
 	defer dstate.mu.Unlock()
 	if dstate.job != nil {
@@ -146,6 +212,7 @@ func (g *grpcServer) GetStatus(ctx context.Context, in *pb.JobIdRequest) (*pb.Jo
 }
 
 func (g *grpcServer) ReadLog(in *pb.JobIdRequest, stream pb.SavtIpc_ReadLogServer) error {
+	log.Printf("[grpc] ReadLog")
 	// 从当前日志快照开始推流(老GUI语义: 读历史日志)
 	dstate.mu.Lock()
 	logs := append([]string{}, dstate.logs...)
@@ -157,6 +224,7 @@ func (g *grpcServer) ReadLog(in *pb.JobIdRequest, stream pb.SavtIpc_ReadLogServe
 }
 
 func (g *grpcServer) GetConfig(ctx context.Context, _ *emptypb.Empty) (*pb.Config, error) {
+	log.Printf("[grpc] GetConfig")
 	sched.mu.Lock()
 	defer sched.mu.Unlock()
 	c := sched.cfg
@@ -172,6 +240,7 @@ func (g *grpcServer) GetConfig(ctx context.Context, _ *emptypb.Empty) (*pb.Confi
 }
 
 func (g *grpcServer) SetConfig(ctx context.Context, in *pb.Config) (*emptypb.Empty, error) {
+	log.Printf("[grpc] SetConfig")
 	sched.mu.Lock()
 	sched.cfg = daemonConfig{
 		Enable:          in.EnableScheduler,
@@ -189,6 +258,7 @@ func (g *grpcServer) SetConfig(ctx context.Context, in *pb.Config) (*emptypb.Emp
 }
 
 func (g *grpcServer) GetHistory(ctx context.Context, _ *emptypb.Empty) (*pb.GetHistoryResponse, error) {
+	log.Printf("[grpc] GetHistory")
 	_, histDir := daemonDirs()
 	jobs := []*pb.Job{}
 	entries, err := readDirSortedDesc(histDir)
