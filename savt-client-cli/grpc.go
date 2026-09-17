@@ -21,7 +21,7 @@ import (
 
 	pb "savt-client/savt-client-api/savt"
 
-	"savt-client/savt-client-cli/common"
+	"sav-next/common"
 )
 
 // ---- 任务/日志状态(GUI 可见的全部状态) ----
@@ -100,7 +100,7 @@ func (g *grpcServer) Start(ctx context.Context, _ *emptypb.Empty) (*pb.Job, erro
 		"natfilter":   "NAT filtering test",
 		"inbound":     "Inbound SAV test",
 		"outbound":    "Outbound SAV test",
-		"tracefilter": "Trace filter test",
+		"tracefilter": "Tracefilter test",
 		"traceroute":  "Traceroute test",
 	}
 	v4Total := 0 // v4栈实际轮数(v6剔除NAT轮后不足6步,偏移须动态)
