@@ -1,0 +1,27 @@
+#!/bin/bash
+set -e
+
+# Get the directory where the current script is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DATA_DIR="/Library/Application Support/savt-client"
+# Log file path
+LOG_DIR="/tmp/savt-client"
+LOG_FILE="$LOG_DIR/preinstall.log"
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Set up log output
+exec > >(tee -i "$LOG_FILE") 2>&1
+
+echo "Starting preinstall script..."
+
+echo "1. Running stop_savt_client_worker.sh ..."
+chmod +x "$SCRIPT_DIR/stop_savt_client_worker.sh"
+"$SCRIPT_DIR/stop_savt_client_worker.sh"
+
+echo "2. Clean history data ..."
+rm -rf DATA_DIR
+
+# Log completion
+echo "Preinstall script completed successfully!"

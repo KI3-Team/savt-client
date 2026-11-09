@@ -1,0 +1,46 @@
+#!/bin/bash
+set -e
+
+# Get the directory where the current script is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Log file path
+LOG_DIR="/tmp/savt-client"
+LOG_FILE="$LOG_DIR/postinstall.log"
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Set up log output
+exec > >(tee -i "$LOG_FILE") 2>&1
+
+echo "Starting postinstall script..."
+
+# Call install_main.sh to install main program
+echo "Running install_main.sh..."
+chmod +x "$SCRIPT_DIR/install_main.sh"
+"$SCRIPT_DIR/install_main.sh"
+
+# Call install_savt_client_worker.sh to install service
+echo "Running install_savt_client_worker.sh..."
+chmod +x "$SCRIPT_DIR/install_savt_client_worker.sh"
+"$SCRIPT_DIR/install_savt_client_worker.sh"
+
+# Call install_savt_client_upgrader.sh to install upgrader daemon
+echo "Running install_savt_client_upgrader.sh..."
+chmod +x "$SCRIPT_DIR/install_savt_client_upgrader.sh"
+"$SCRIPT_DIR/install_savt_client_upgrader.sh"
+
+# Find currently mounted installation disk
+MOUNT_POINT=$(df | grep "savt-client" | awk '{print $NF}')
+if [ -n "$MOUNT_POINT" ]; then
+    echo "Unmounting DMG at $MOUNT_POINT..."
+    hdiutil detach "$MOUNT_POINT" || {
+        echo "Failed to unmount $MOUNT_POINT. Please eject the disk image manually."
+    }
+else
+    echo "DMG mount point not found. Skipping unmount."
+fi
+
+# Complete log
+echo "Postinstall script completed successfully!"

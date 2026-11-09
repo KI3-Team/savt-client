@@ -1,0 +1,58 @@
+#!/bin/bash
+set -e
+
+# Get the directory where the current script is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_NAME="savt-client"
+APP_PATH="/Applications/$APP_NAME.app"
+DATA_DIR="/Library/Application Support/savt-client"
+# Log file path
+LOG_DIR="/tmp/savt-client"
+LOG_FILE="$LOG_DIR/preinstall.log"
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Set up log output
+exec > >(tee -i "$LOG_FILE") 2>&1
+
+echo "Starting preinstall script..."
+
+echo "1. Running stop_savt_client_worker.sh ..."
+chmod +x "$SCRIPT_DIR/stop_savt_client_worker.sh"
+"$SCRIPT_DIR/stop_savt_client_worker.sh"
+
+echo "1b. Running stop_savt_client_upgrader.sh ..."
+chmod +x "$SCRIPT_DIR/stop_savt_client_upgrader.sh"
+"$SCRIPT_DIR/stop_savt_client_upgrader.sh"
+
+echo "1c. Keep durable device id at /var/db/savt-client/device.id (survives reinstall)"
+# Legacy install-root id may go away with the .app; durable id must not be deleted.
+
+echo "2. Clean history data ..."
+if [ -d "$DATA_DIR" ]; then
+    rm -rf "$DATA_DIR"
+    echo "Deleted $DATA_DIR"
+else
+    echo "Warning: $DATA_DIR does not exist."
+fi
+
+echo "3. Clean application ..."
+# Check if application exists
+if [ -d "$APP_PATH" ]; then
+    echo "Found $APP_PATH. Attempting to delete using AppleScript..."
+    # Use osascript to call AppleScript to delete the application
+    osascript <<EOF
+tell application "Finder"
+    if exists application file "$APP_NAME" of folder "Applications" of startup disk then
+        delete application file "$APP_NAME" of folder "Applications" of startup disk
+    end if
+end tell
+EOF
+    echo "Deleted $APP_NAME using AppleScript."
+else
+    echo "Warning: $APP_PATH does not exist."
+fi
+
+# Log completion
+echo "Preinstall script completed successfully!"
